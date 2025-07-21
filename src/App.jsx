@@ -222,7 +222,7 @@ const Header = ({ toggleSidebar, onSearchClick, onBookmarkClick, onSettingsClick
     <header className={`w-full bg-[var(--box-bg-color)] p-4 flex justify-between items-center shadow-sm rounded-b-xl transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'} fixed top-0 left-0 z-30`}>
       <div className="flex items-center space-x-4">
         {/* Back Button (conditionally rendered for search/bookmarks/settings/profile/category pages) */}
-        {(currentPage !== 'home' && currentPage !== 'cover' && currentPage !== 'create-account') && (
+        {(currentPage !== 'home' && currentPage !== 'cover' && currentPage !== 'create-account' && currentPage !== 'splash') && (
           <button
             onClick={() => { onBack(); playSound(clickSoundRef, 'click', soundSettings); }}
             aria-label="Go back"
@@ -300,7 +300,7 @@ const Header = ({ toggleSidebar, onSearchClick, onBookmarkClick, onSettingsClick
             aria-label={isHeaderVisible ? "Hide header" : "Show header"}
             className="text-[var(--primary-color)] hover:text-gray-700 focus:outline-none ml-4 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
           >
-            <i className={`fas ${isHeaderVisible ? 'fa-chevron-up' : 'fa-chevron-down'} text-xl`}></i>
+            <i className={`fas ${isHeaderVisible ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
           </button>
         )}
       </nav>
@@ -366,9 +366,9 @@ const HomeContent = ({ onSeeMoreClick, onDiscoverClick, isLoggedIn, onAboutUsCli
           {/* New Sections */}
           <ProductSection title="Books" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
           <ProductSection title="Accessories" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="DIY/Art" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="DIY / Art" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
           <ProductSection title="Tech" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="Cups/Drinks" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Cups / Drinks" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
           <ProductSection title="Stationary" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
           <ProductSection title="Music" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
           <ProductSection title="Figurines / Plushies" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
@@ -543,7 +543,7 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
   if (!isOpen) return null;
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentAnswerValue = answers[currentQuestion.id]?.value;
+  const currentAnswerValue = answers[currentQuestion.id];
   const currentAnswerType = answers[currentQuestion.id]?.type;
 
   const isNextDisabled = isLoading ||
@@ -1974,7 +1974,7 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
           alert('Failed to add to wishlist: ' + error.message);
         } else {
           setBookmarkedProducts(prev => [...prev, product]);
-          alert(`${product.name} added to wishlist!`);
+          handleShowWishlistSuccess(product.name);
         }
       }
     } catch (error) {
@@ -2629,12 +2629,85 @@ const CreateAccountPage = ({ onCreateAccount, onBackToSignIn, soundSettings, cli
   );
 };
 
+// New Splash Page Component
+const SplashPage = ({ onGetStartedClick, soundSettings, clickSoundRef }) => {
+  return (
+    <div
+      className="fixed inset-0 flex flex-col items-center justify-center p-4 z-50 cursor-pointer"
+      style={{ backgroundColor: 'var(--main-bg-color)' }}
+      onClick={() => { onGetStartedClick(); playSound(clickSoundRef, 'click', soundSettings); }}
+    >
+      <div className="flex flex-col items-center justify-center flex-grow text-center">
+        <h1 className="text-6xl md:text-8xl font-handwritten text-[var(--primary-color)] mb-4 animate-fade-in-up">
+          WYSHDROP.
+        </h1>
+        <p className="text-lg md:text-xl text-[var(--primary-color)] mt-4 animate-fade-in-up delay-100">
+          Work in progress but feel free to click anywhere to get started.
+        </p>
+      </div>
+
+      <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 mb-8 z-10">
+        <a
+          href="mailto:lydiaandcrim@gmail.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => { e.stopPropagation(); playSound(clickSoundRef, 'click', soundSettings); }} // Stop propagation to prevent page transition
+          className="px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-full shadow-lg hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 flex items-center justify-center"
+        >
+          <i className="fas fa-envelope mr-2"></i> Gmail
+        </a>
+        <a
+          href="https://www.instagram.com/lydiaandcrim?igsh=MThiZDk0Y3F6anlzNg=="
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => { e.stopPropagation(); playSound(clickSoundRef, 'click', soundSettings); }} // Stop propagation
+          className="px-6 py-3 bg-pink-500 text-white font-bold rounded-full shadow-lg hover:bg-pink-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 flex items-center justify-center"
+        >
+          <i className="fab fa-instagram mr-2"></i> Instagram
+        </a>
+        <a
+          href="https://www.youtube.com/@LydiaAndCrim"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => { e.stopPropagation(); playSound(clickSoundRef, 'click', soundSettings); }} // Stop propagation
+          className="px-6 py-3 bg-red-600 text-white font-bold rounded-full shadow-lg hover:bg-red-700 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 flex items-center justify-center"
+        >
+          <i className="fab fa-youtube mr-2"></i> YouTube
+        </a>
+      </div>
+
+      <style>{`
+        @keyframes fadeInOut {
+          0% { opacity: 0; transform: translateY(-20px); }
+          10% { opacity: 1; transform: translateY(0); }
+          90% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .animate-fade-in-out {
+          animation: fadeInOut 3s forwards;
+        }
+
+        @keyframes fadeInFromBottom {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fadeInFromBottom 1s ease-out forwards;
+        }
+        .animate-fade-in-up.delay-100 {
+          animation-delay: 0.1s;
+        }
+      `}</style>
+    </div>
+  );
+};
+
 
 // Main App component
 const App = () => {
   console.log("App component is rendering."); // Added for debugging
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState('cover'); // Start with the cover page
+  const [currentPage, setCurrentPage] = useState('splash'); // Start with the new splash page
   const [currentCategory, setCurrentCategory] = useState(''); // To store the clicked category name
   const [currentSubcategory, setCurrentSubcategory] = useState(''); // To store the clicked subcategory name
   // --- SUPABASE INTEGRATION: Updated user state to include 'id' and 'profile_image_url' ---
@@ -2742,17 +2815,17 @@ const App = () => {
     {
       name: "Ocean Blue", // Desaturated pastel
       light: { mainBg: "#E0F2F7", primary: "#2C5282", border: "#A7D9EB", boxBg: "#FFFFFF", buttonBg: "#4299E1", footerBg: "#2C5282" },
-      dark: { mainBg: "#CCE0E8", primary: "#2C5282", border: "#A7D9EB", boxBg: "#E0F2F7", buttonBg: "#4299E1", footerBg: "#E0F2F7" } // Slightly darker pastel for dark mode
+      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#A7D9EB", boxBg: "#E0F2F7", buttonBg: "#4299E1", footerBg: "#E0F2F7" } // Slightly darker pastel for dark mode
     },
     {
       name: "Forest Green", // Desaturated forest green
       light: { mainBg: "#EAF4E4", primary: "#4F7942", border: "#C8DCCB", boxBg: "#FFFFFF", buttonBg: "#6B8E23", footerBg: "#4F7942" },
-      dark: { mainBg: "#D7E0D2", primary: "#4F7942", border: "#C8DCCB", boxBg: "#EAF4E4", buttonBg: "#6B8E23", footerBg: "#EAF4E4" }
+      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#C8DCCB", boxBg: "#EAF4E4", buttonBg: "#6B8E23", footerBg: "#EAF4E4" }
     },
     {
       name: "Lavender", // Light lavender
-      light: { mainBg: "#F8F0FF", primary: "#9370DB", border: "#E1CCF7", boxBg: "#FFFFFF", buttonBg: "#A58EDF", footerBg: "#9370DB" },
-      dark: { mainBg: "#EFE5F9", primary: "#9370DB", border: "#E1CCF7", boxBg: "#F8F0FF", buttonBg: "#A58EDF", footerBg: "#F8F0FF" }
+      light: { mainBg: "#F8F0FF", primary: "#7753A5", border: "#E1CCF7", boxBg: "#FFFFFF", buttonBg: "#A58EDF", footerBg: "#9370DB" },
+      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#E1CCF7", boxBg: "#F8F0FF", buttonBg: "#A58EDF", footerBg: "#F8F0FF" }
     },
   ];
 
@@ -3077,7 +3150,7 @@ const App = () => {
           setBookmarkedProducts([]); // Clear data on logout
           setGiftingContacts([]); // Clear data on logout
           // Only redirect to cover if not already on it (to prevent infinite loops)
-          if (currentPage !== 'cover' && currentPage !== 'create-account') {
+          if (currentPage !== 'cover' && currentPage !== 'create-account' && currentPage !== 'splash') {
             setCurrentPage('cover');
           }
         }
@@ -3117,14 +3190,14 @@ const App = () => {
         setCurrentPage('home');
       } else {
         setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-        setCurrentPage('cover');
+        setCurrentPage('splash'); // Keep on splash if no session
       }
       setIsCoverPageTransitioningOut(false); // Reset transition state after initial session check
     }).catch(error => {
       console.error("Error getting initial Supabase session:", error.message);
       // If there's an error getting session, assume not logged in and show cover page
       setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-      setCurrentPage('cover');
+      setCurrentPage('splash'); // Keep on splash if API key error
       setShowApiKeyError(true); // Indicate a potential Supabase config issue
       setIsCoverPageTransitioningOut(false);
     });
@@ -3238,6 +3311,11 @@ const App = () => {
     // The onAuthStateChange listener will handle the actual user state update and navigation to 'home'
   };
 
+  // New handler for splash page to cover page transition
+  const handleGetStartedClick = () => {
+    setCurrentPage('cover');
+  };
+
 
   return (
     <div className={`min-h-screen font-inter flex flex-col items-center transition-colors duration-300`}
@@ -3245,8 +3323,14 @@ const App = () => {
       {/* Font Awesome for icons */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 
-      {/* Conditional rendering of CoverPage or Main App content */}
-      {currentPage === 'cover' ? (
+      {/* Conditional rendering of SplashPage, CoverPage or Main App content */}
+      {currentPage === 'splash' ? (
+        <SplashPage
+          onGetStartedClick={handleGetStartedClick}
+          soundSettings={soundSettings}
+          clickSoundRef={clickSoundRef}
+        />
+      ) : currentPage === 'cover' ? (
         <CoverPage
           onGuestSignIn={handleGuestSignIn}
           onSignInClick={handleCoverSignInClick}
@@ -3434,7 +3518,7 @@ const App = () => {
                 <div class="flex flex-col items-center space-y-4 mb-8">
                   <div class="flex items-center space-x-2 text-lg">
                     <i class="fas fa-envelope text-[var(--primary-color)]"></i>
-                    <a href="mailto:info@wyshdrop.com" class="text-[var(--primary-color)] hover:underline">info@wyshdrop.com</a>
+                    <a href="mailto:lydiaandcrim@gmail.com" class="text-[var(--primary-color)] hover:underline">info@wyshdrop.com</a>
                   </div>
                   <div class="flex items-center space-x-2 text-lg text-[var(--primary-color)]">
                     <i class="fas fa-phone text-[var(--primary-color)]"></i>
@@ -3728,5 +3812,4 @@ const App = () => {
 };
 
 export default App;
-
 
