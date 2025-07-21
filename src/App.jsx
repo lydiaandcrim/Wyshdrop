@@ -2810,22 +2810,22 @@ const App = () => {
     {
       name: "Default",
       light: { mainBg: "#FFDDBD", primary: "#9A6E45", border: "#D3A173", boxBg: "#FFFFFF", buttonBg: "#9A6E45", footerBg: "#9A6E45" },
-      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#5A5BA6", boxBg: "#343570", buttonBg: "#272882", footerBg: "#343570" }
+      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#5A5BA6", boxBg: "#343570", buttonBg: "#272882", footerBg: "#000000" }
     },
     {
       name: "Ocean Blue", // Desaturated pastel
       light: { mainBg: "#E0F2F7", primary: "#2C5282", border: "#A7D9EB", boxBg: "#FFFFFF", buttonBg: "#4299E1", footerBg: "#2C5282" },
-      dark: { mainBg: "#2C6B9E", primary: "#FFFFFF", border: "#A7D9EB", boxBg: "#07083C", buttonBg: "#4299E1", footerBg: "000000" } // Slightly darker pastel for dark mode
+      dark: { mainBg: "#2C6B9E", primary: "#FFFFFF", border: "#A7D9EB", boxBg: "#07083C", buttonBg: "#000000", footerBg: "000000" } // Slightly darker pastel for dark mode
     },
     {
       name: "Forest Green", // Desaturated forest green
       light: { mainBg: "#EAF4E4", primary: "#4F7942", border: "#C8DCCB", boxBg: "#FFFFFF", buttonBg: "#6B8E23", footerBg: "#4F7942" },
-      dark: { mainBg: "#43631B", primary: "#FFFFFF", border: "#C8DCCB", boxBg: "#063A0D", buttonBg: "#6B8E23", footerBg: "#000000" }
+      dark: { mainBg: "#43631B", primary: "#FFFFFF", border: "#C8DCCB", boxBg: "#063A0D", buttonBg: "#000000", footerBg: "#000000" }
     },
     {
       name: "Lavender", // Light lavender
       light: { mainBg: "#F8F0FF", primary: "#7753A5", border: "#E1CCF7", boxBg: "#FFFFFF", buttonBg: "#A58EDF", footerBg: "#9370DB" },
-      dark: { mainBg: "#3C1C55", primary: "#FFFFFF", border: "#E1CCF7", boxBg: "#1D063A", buttonBg: "#A58EDF", footerBg: "#000000" }
+      dark: { mainBg: "#3C1C55", primary: "#FFFFFF", border: "#E1CCF7", boxBg: "#1D063A", buttonBg: "#000000", footerBg: "#000000" }
     },
   ];
 
