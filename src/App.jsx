@@ -3240,6 +3240,8 @@ const App = () => {
           const userEmail = session.user.email;
           const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
           const userId = session.user.id;
+      console.log('Auth event received:', event);
+      console.log('Session received:', session);
 
           // 1. Fetch/Create User Profile in 'profiles' table
           let { data: profile, error: profileError } = await supabase
