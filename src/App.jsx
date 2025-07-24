@@ -66,16 +66,21 @@ const debounce = (func, delay) => {
 };
 
 // Reusable ProductSection Component (used on Home page and Category pages)
-const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef }) => {
+const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef, products: propProducts, showSeeMore = true }) => {
   const scrollRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
-  const [products, setProducts] = useState([]); // State for products fetched from Supabase
-  const [isLoading, setIsLoading] = useState(true); // Loading state for products
-  const scrollAmount = 300; // Pixels to scroll
+  const [products, setProducts] = useState(propProducts || []); // Use propProducts if provided, otherwise fetch
+  const [isLoading, setIsLoading] = useState(propProducts ? false : true); // Loading state for products
 
-  // Fetch products from Supabase based on the section title
+  // Fetch products from Supabase based on the section title if propProducts are not provided
   useEffect(() => {
+    if (propProducts) {
+      setProducts(propProducts);
+      setIsLoading(false);
+      return;
+    }
+
     const fetchProducts = async () => {
       setIsLoading(true);
       let query = supabase.from('products').select('*');
@@ -83,9 +88,14 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
       // Implement filtering/ordering based on the section title
       if (title === "TRENDING") {
         query = query.order('created_at', { ascending: false }).limit(10); // Example: newest 10 products
-      } else if (title === "Popular / Most Searched Items" || title === "Recommended for You") {
+      } else if (title === "Popular / Most Searched Items" || title.includes("Recommended for You")) {
         query = query.order('rating', { ascending: false }).limit(10); // Example: highest rated
-      } else {
+      } else if (title.includes("for ")) { // Assuming "for [Contact Name]"
+        // This case is handled by propProducts when used in RecommendedPage
+        // If it somehow falls here, it will just fetch general products
+        query = query.limit(10);
+      }
+      else {
         query = query.eq('category', title).limit(10); // Filter by category name
       }
 
@@ -100,7 +110,7 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
     };
 
     fetchProducts();
-  }, [title]); // Re-fetch when the section title changes
+  }, [title, propProducts]); // Re-fetch when the section title or propProducts changes
 
   const checkScrollArrows = useCallback(() => {
     if (scrollRef.current) {
@@ -140,15 +150,19 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
     }
   };
 
+  const scrollAmount = 300; // Pixels to scroll
+
   return (
     <section className="mb-12 relative"> {/* Increased margin-bottom for more space between sections */}
       <div className="flex justify-between items-center mb-4 ml-4 md:ml-12"> {/* Adjusted margin */}
         {/* Formal font for section titles */}
         <h2 className="text-3xl font-bold text-[var(--primary-color)]">{title}</h2>
         {/* See More link */}
-        <a href="#" onClick={(e) => { e.preventDefault(); onSeeMoreClick(title); playSound(clickSoundRef, 'click', soundSettings); }} className="text-sm text-[var(--primary-color)] hover:underline mr-4 md:mr-12 flex items-center space-x-1 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"> {/* Added animation */}
-          <span>See More</span>
-        </a>
+        {showSeeMore && onSeeMoreClick && (
+          <a href="#" onClick={(e) => { e.preventDefault(); onSeeMoreClick(title); playSound(clickSoundRef, 'click', soundSettings); }} className="text-sm text-[var(--primary-color)] hover:underline mr-4 md:mr-12 flex items-center space-x-1 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"> {/* Added animation */}
+            <span>See More</span>
+          </a>
+        )}
       </div>
       {/* Increased padding-bottom to pb-16 to ensure "Add to Wyshlist" button is fully visible */}
       <div ref={scrollRef} className="flex overflow-x-auto overflow-y-hidden pb-16 space-x-4 custom-scrollbar px-4 md:px-12">
@@ -216,11 +230,11 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
 
 // Reusable Header Component
 const Header = ({ toggleSidebar, onSearchClick, onBookmarkClick, onSettingsClick, onProfileClick, onBack, currentPage, onWyshDropClick, isHeaderVisible, toggleHeaderVisibility, user, onQuizMeClick, onDonateClick, onFeedbackClick, onSignInClick, onSignUpClick, soundSettings, clickSoundRef }) => {
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  // Removed showProfileDropdown state as per request
 
   return (
     <header className={`w-full bg-[var(--box-bg-color)] p-4 flex justify-between items-center shadow-sm rounded-b-xl transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'} fixed top-0 left-0 z-30`}>
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 sm:space-x-4"> {/* Adjusted space-x for mobile */}
         {/* Back Button (conditionally rendered for search/bookmarks/settings/profile/category pages) */}
         {(currentPage !== 'home' && currentPage !== 'cover' && currentPage !== 'create-account' && currentPage !== 'splash') && (
           <button
@@ -240,15 +254,15 @@ const Header = ({ toggleSidebar, onSearchClick, onBookmarkClick, onSettingsClick
           <i className="fas fa-bars text-xl"></i>
         </button>
         {/* WyshDrop Logo/Text - Now links to home */}
-        <div className="flex items-center space-x-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95" onClick={() => { onWyshDropClick(); playSound(clickSoundRef, 'click', soundSettings); }}>
+        <div className="flex items-center space-x-1 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95" onClick={() => { onWyshDropClick(); playSound(clickSoundRef, 'click', soundSettings); }}>
           {/* Use an <img> tag for the logo. Ensure this is a transparent PNG for best results. */}
-          <img src="https://placehold.co/40x40/transparent/9A6E45?text=Logo" alt="WyshDrop Logo" className="h-10 w-10 object-contain" />
-          <h1 className="text-3xl font-handwritten text-[var(--primary-color)] flex items-center space-x-1">
+          <img src="https://placehold.co/40x40/transparent/9A6E45?text=Logo" alt="WyshDrop Logo" className="h-8 w-8 sm:h-10 sm:w-10 object-contain" /> {/* Adjusted size for mobile */}
+          <h1 className="text-2xl sm:text-3xl font-handwritten text-[var(--primary-color)] flex items-center space-x-1"> {/* Adjusted font size for mobile */}
             <span>WyshDrop</span>
           </h1>
         </div>
       </div>
-      <nav className="flex space-x-6">
+      <nav className="flex space-x-3 sm:space-x-6"> {/* Adjusted space-x for mobile */}
         {/* Search Icon */}
         <button aria-label="Search" className="text-[var(--primary-color)] hover:text-gray-700 focus:outline-none transition-all duration-200 ease-in-out hover:scale-105 active:scale-95" onClick={() => { onSearchClick(); playSound(clickSoundRef, 'click', soundSettings); }}>
           <i className="fas fa-search text-xl"></i>
@@ -261,38 +275,11 @@ const Header = ({ toggleSidebar, onSearchClick, onBookmarkClick, onSettingsClick
         <button aria-label="Settings" className="text-[var(--primary-color)] hover:text-gray-700 focus:outline-none transition-all duration-200 ease-in-out hover:scale-105 active:scale-95" onClick={() => { onSettingsClick(); playSound(clickSoundRef, 'click', soundSettings); }}>
           <i className="fas fa-cog text-xl"></i>
         </button>
-        {/* User Profile Icon with Dropdown */}
-        <div className="relative" onMouseEnter={() => setShowProfileDropdown(true)} onMouseLeave={() => setShowProfileDropdown(false)}>
-          <button aria-label="User Profile" className="text-[var(--primary-color)] hover:text-gray-700 focus:outline-none transition-all duration-200 ease-in-out hover:scale-105 active:scale-95" onClick={() => { onProfileClick(); playSound(clickSoundRef, 'click', soundSettings); }}>
-            <i className="fas fa-user-circle text-xl"></i>
-            <span className="ml-2 text-sm hidden md:inline">{user.username || 'Guest'}</span>
-          </button>
-          {showProfileDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-[var(--box-bg-color)] rounded-md shadow-lg py-1 z-10 border border-[var(--border-color)]">
-              {user.isLoggedIn ? (
-                <>
-                  <div className="px-4 py-2 text-sm text-[var(--primary-color)] border-b border-[var(--border-color)]">
-                    <p className="font-semibold">{user.username}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
-                  </div>
-                  <button onClick={() => { onProfileClick(); playSound(clickSoundRef, 'click', soundSettings); }} className="block w-full text-left px-4 py-2 text-sm text-[var(--primary-color)] hover:bg-gray-100 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">Go to Profile</button> {/* New option */}
-                  <button onClick={() => { onQuizMeClick(); playSound(clickSoundRef, 'click', soundSettings); }} className="block w-full text-left px-4 py-2 text-sm text-[var(--primary-color)] hover:bg-gray-100 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">Quiz Me ✨</button>
-                  <button onClick={() => { onDonateClick(); playSound(clickSoundRef, 'click', soundSettings); }} className="block w-full text-left px-4 py-2 text-sm text-[var(--primary-color)] hover:bg-gray-100 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">Donate</button>
-                  <button onClick={() => { onFeedbackClick(); playSound(clickSoundRef, 'click', soundSettings); }} className="block w-full text-left px-4 py-2 text-sm text-[var(--primary-color)] hover:bg-gray-100 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">Feedback</button>
-                </>
-              ) : (
-                <>
-                  <div className="px-4 py-2 text-sm text-[var(--primary-color)] border-b border-[var(--border-color)]">
-                    <p className="font-semibold">Guest User</p>
-                    <p className="text-xs text-gray-500">Sign in for full features!</p>
-                  </div>
-                  <button onClick={() => { onSignInClick(); playSound(clickSoundRef, 'click', soundSettings); }} className="block w-full text-left px-4 py-2 text-sm text-[var(--primary-color)] hover:bg-gray-100 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">Sign In</button>
-                  <button onClick={() => { onSignUpClick(); playSound(clickSoundRef, 'click', soundSettings); }} className="block w-full text-left px-4 py-2 text-sm text-[var(--primary-color)] hover:bg-gray-100 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">Sign Up</button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        {/* User Profile Icon (no dropdown) */}
+        <button aria-label="User Profile" className="text-[var(--primary-color)] hover:text-gray-700 focus:outline-none transition-all duration-200 ease-in-out hover:scale-105 active:scale-95" onClick={() => { onProfileClick(); playSound(clickSoundRef, 'click', soundSettings); }}>
+          <i className="fas fa-user-circle text-xl"></i>
+          <span className="ml-2 text-sm hidden md:inline">{user.username || 'Guest'}</span>
+        </button>
         {/* Hide/Show Header Button */}
         {currentPage === 'home' && ( // Only show on home page for now
           <button
@@ -350,12 +337,18 @@ const HomeContent = ({ onSeeMoreClick, onDiscoverClick, isLoggedIn, onAboutUsCli
         {/* Animation on Our Purpose Section - Now fills the whole banner */}
         {/* Changed to h-0 pb-[33.33%] for responsive aspect ratio, object-contain for image */}
         <section className="w-full h-0 pb-[33.33%] mb-8 rounded-lg shadow-lg border-2 border-[var(--border-color)] overflow-hidden relative">
-          <img
-            src={purposeBanners[currentBannerIndex]}
-            alt="WyshDrop Mission Banner"
-            className="absolute inset-0 w-full h-full object-contain rounded-lg transition-opacity duration-1000" // Added transition
-            onError={(e) => e.target.src = "https://placehold.co/1200x400/D3A173/FFFFFF?text=Image+Load+Error"} // Fallback image
-          />
+          {purposeBanners.map((banner, index) => (
+            <img
+              key={index}
+              src={banner}
+              alt={`WyshDrop Mission Banner ${index + 1}`}
+              className={`absolute inset-0 w-full h-full object-contain rounded-lg transition-transform duration-1000 ease-in-out ${
+                index === currentBannerIndex ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+              }`} // Swipe animation
+              onError={(e) => e.target.src = "https://placehold.co/1200x400/D3A173/FFFFFF?text=Image+Load+Error"} // Fallback image
+              style={{ left: `${(index - currentBannerIndex) * 100}%` }} // Position for swipe effect
+            />
+          ))}
         </section>
 
         {/* All other sections now need horizontal padding */}
@@ -392,11 +385,13 @@ const HomeContent = ({ onSeeMoreClick, onDiscoverClick, isLoggedIn, onAboutUsCli
 };
 
 // Quiz Modal Component
-const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundRef, user }) => { // Added 'user' prop
+const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundRef, user, giftingContacts }) => { // Added 'user' and 'giftingContacts' prop
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [quizResults, setQuizResults] = useState('');
+  const [selectedContactForGift, setSelectedContactForGift] = useState(''); // New state for selected contact
+  const [saveProgressTimeout, setSaveProgressTimeout] = useState(null); // For debouncing save
 
   const questions = [
     {
@@ -433,15 +428,67 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
     }
   ];
 
+  // --- SUPABASE INTEGRATION: Load quiz answers on open ---
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen && user.id) {
+      const loadQuizProgress = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('quiz_answers')
+          .eq('id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
+          console.error('Error loading quiz progress:', error);
+        } else if (data && data.quiz_answers) {
+          setAnswers(data.quiz_answers);
+          // Find the last answered question to resume from
+          const lastAnsweredIndex = questions.findIndex(q => !data.quiz_answers[q.id]);
+          if (lastAnsweredIndex !== -1) {
+            setCurrentQuestionIndex(lastAnsweredIndex);
+          } else {
+            setCurrentQuestionIndex(questions.length - 1); // If all answered, go to last question
+          }
+        }
+      };
+      loadQuizProgress();
+    } else if (!isOpen) {
       // Reset state when modal closes
       setCurrentQuestionIndex(0);
       setAnswers({});
       setQuizResults('');
       setIsLoading(false);
+      setSelectedContactForGift('');
     }
-  }, [isOpen]);
+  }, [isOpen, user.id]);
+
+  // --- SUPABASE INTEGRATION: Debounced save of quiz answers ---
+  useEffect(() => {
+    if (user.id && isOpen) {
+      if (saveProgressTimeout) {
+        clearTimeout(saveProgressTimeout);
+      }
+      const timeout = setTimeout(async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ quiz_answers: answers, updated_at: new Date().toISOString() })
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('Error saving quiz progress:', error);
+        } else {
+          console.log('Quiz progress saved.');
+        }
+      }, 1000); // Save 1 second after last change
+      setSaveProgressTimeout(timeout);
+    }
+    return () => {
+      if (saveProgressTimeout) {
+        clearTimeout(saveProgressTimeout);
+      }
+    };
+  }, [answers, user.id, isOpen]);
+
 
   const handleAnswerChange = (questionId, value, isOtherInput = false) => {
     setAnswers(prev => {
@@ -509,7 +556,7 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
 
         // --- SUPABASE INTEGRATION: Save quiz answers to user profile ---
         if (user.id) {
-          const { error: updateError } = await supabase
+          const { error: updateProfileError } = await supabase
             .from('profiles')
             .update({
               has_taken_quiz: true,
@@ -518,17 +565,34 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
             })
             .eq('id', user.id);
 
-          if (updateError) {
-            console.error('Error saving quiz answers to profile:', updateError);
-            alert('Failed to save quiz answers: ' + updateError.message);
+          if (updateProfileError) {
+            console.error('Error saving quiz answers to profile:', updateProfileError);
+            alert('Failed to save quiz answers: ' + updateProfileError.message);
           } else {
             console.log('Quiz answers saved to profile.');
-            onQuizComplete(answers); // Call parent handler to update hasTakenQuiz state in App.js
           }
-        } else {
-          onQuizComplete(answers); // Still call parent even if not logged in, for local state update
-        }
 
+          // --- SUPABASE INTEGRATION: Save generated gift ideas (potentially with contact) ---
+          const { error: insertIdeasError } = await supabase
+            .from('contact_gift_ideas') // Assuming this table exists for gift ideas
+            .insert([
+              {
+                user_id: user.id,
+                contact_id: selectedContactForGift || null, // Null if no contact selected
+                quiz_answers_snapshot: answers,
+                generated_ideas_text: text,
+                created_at: new Date().toISOString()
+              }
+            ]);
+
+          if (insertIdeasError) {
+            console.error('Error saving generated gift ideas:', insertIdeasError);
+            alert('Failed to save gift ideas: ' + insertIdeasError.message);
+          } else {
+            console.log('Generated gift ideas saved.');
+          }
+        }
+        onQuizComplete(answers); // Call parent handler to update hasTakenQuiz state in App.js
       } else {
         setQuizResults("Could not generate gift ideas. Please try again.");
       }
@@ -543,7 +607,7 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
   if (!isOpen) return null;
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentAnswerValue = answers[currentQuestion.id];
+  const currentAnswerValue = answers[currentQuestion.id]?.value;
   const currentAnswerType = answers[currentQuestion.id]?.type;
 
   const isNextDisabled = isLoading ||
@@ -552,8 +616,15 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
 
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => { onClose(); playSound(clickSoundRef, 'click', soundSettings); }}> {/* Click outside to close */}
-      <div className="bg-[var(--box-bg-color)] p-6 rounded-lg shadow-lg border-2 border-[var(--border-color)] w-full max-w-lg mx-auto flex flex-col max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}> {/* Prevent click from propagating to overlay */}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => { onClose(); playSound(clickSoundRef, 'click', soundSettings); }}> {/* Click outside to close */}
+      <div className="bg-[var(--box-bg-color)] p-6 rounded-lg shadow-lg border-2 border-[var(--border-color)] w-full max-w-lg mx-auto flex flex-col max-h-[90vh] overflow-y-auto relative" onClick={(e) => e.stopPropagation()}> {/* Prevent click from propagating to overlay */}
+        <button
+          onClick={() => { onClose(); playSound(clickSoundRef, 'click', soundSettings); }}
+          className="absolute top-4 right-4 text-[var(--primary-color)] hover:text-gray-700 focus:outline-none transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
+          aria-label="Close quiz"
+        >
+          <i className="fas fa-times text-xl"></i>
+        </button>
         <h2 className="text-2xl font-bold text-[var(--primary-color)] mb-4 text-center">Gift Idea Quiz ✨</h2>
 
         {quizResults ? (
@@ -562,9 +633,25 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
             <div className="prose prose-sm max-w-none text-[var(--primary-color)]">
               <p className="whitespace-pre-wrap">{quizResults}</p>
             </div>
+            {user.isLoggedIn && giftingContacts.length > 0 && (
+              <div className="mt-6 border-t border-[var(--border-color)] pt-4">
+                <h3 className="text-xl font-semibold text-[var(--primary-color)] mb-3">Associate with a Contact (Optional):</h3>
+                <select
+                  value={selectedContactForGift}
+                  onChange={(e) => { setSelectedContactForGift(e.target.value); playSound(clickSoundRef, 'click', soundSettings); }}
+                  className="w-full p-3 border border-gray-300 rounded-md bg-[var(--main-bg-color)] text-[var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+                >
+                  <option value="">Select a contact...</option>
+                  {giftingContacts.map(contact => (
+                    <option key={contact.id} value={contact.id}>{contact.contact_name}</option>
+                  ))}
+                </select>
+                <p className="text-sm text-gray-500 mt-2">Selecting a contact will show these ideas in their section on the Recommended page.</p>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="flex-grow flex flex-col">
+          <div className="flex-grow flex flex-col transition-all duration-500 ease-in-out transform translate-x-0" key={currentQuestionIndex}> {/* Animation key */}
             <p className="text-lg text-[var(--primary-color)] mb-4 text-center">{currentQuestion.text}</p>
             {currentQuestion.type === 'text' && (
               <input
@@ -657,15 +744,6 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
               } ${currentQuestionIndex === questions.length - 1 && !isNextDisabled ? 'mx-auto' : ''}`}
             >
               {currentQuestionIndex === questions.length - 1 ? 'Get Ideas ✨' : 'Next'}
-            </button>
-          )}
-          {/* Cancel button for the quiz */}
-          {!quizResults && (
-            <button
-              onClick={() => { onClose(); playSound(clickSoundRef, 'click', soundSettings); }}
-              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-            >
-              Cancel
             </button>
           )}
           {quizResults && (
@@ -1110,32 +1188,53 @@ const FeedbackModal = ({ isOpen, onClose, onSubmit, onSkip, purpose, soundSettin
 };
 
 // Profile Page Component
-const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGiftingContacts, soundSettings, clickSoundRef }) => {
+const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGiftingContacts, soundSettings, clickSoundRef, onProductClick, onAddProductToWishlist }) => {
   const [profileImage, setProfileImage] = useState(user.profile_image_url || "https://placehold.co/150x150/D3A173/FFFFFF?text=PFP");
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [newContactName, setNewContactName] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [showAddContactForm, setShowAddContactForm] = useState(false);
+  const [recentBookmarks, setRecentBookmarks] = useState([]); // State for bookmarks
+  const [recommendedProducts, setRecommendedProducts] = useState([]); // State for recommendations
 
   // Update local state when user prop changes (e.g., after initial load or profile update)
   useEffect(() => {
     if (user.isLoggedIn) {
       setProfileImage(user.profile_image_url || "https://placehold.co/150x150/D3A173/FFFFFF?text=PFP");
+      // Fetch recent bookmarks and recommended products for the profile page
+      const fetchProfileProducts = async () => {
+        if (!user.id) return;
+
+        // Fetch Wishlist (Recent Bookmarked Items)
+        const { data: wishlistData, error: wishlistError } = await supabase
+          .from('wishlists')
+          .select('product_id, products(*)') // Select product details via join
+          .eq('user_id', user.id)
+          .order('added_at', { ascending: false })
+          .limit(10); // Limit to recent bookmarks
+
+        if (wishlistError) {
+          console.error('Error fetching profile wishlist:', wishlistError);
+        } else {
+          setRecentBookmarks(wishlistData.map(item => item.products));
+        }
+
+        // Fetch Recommended Products (general recommendations for profile)
+        const { data: recData, error: recError } = await supabase
+          .from('products')
+          .select('*')
+          .order('rating', { ascending: false }) // Example: top-rated products
+          .limit(10);
+
+        if (recError) {
+          console.error('Error fetching profile recommendations:', recError);
+        } else {
+          setRecommendedProducts(recData);
+        }
+      };
+      fetchProfileProducts();
     }
   }, [user]);
-
-  // Dummy data for recent bookmarked (will be replaced by actual data later)
-  const recentBookmarks = [
-    { id: 1, name: "Cute Sticker Set", image_url: "https://placehold.co/150x150/D3A173/FFFFFF?text=Item1" },
-    { id: 2, name: "Fantasy Novel", image_url: "https://placehold.co/150x150/D3A173/FFFFFF?text=Item2" },
-    { id: 3, name: "Mini Backpack", image_url: "https://placehold.co/150x150/D3A173/FFFFFF?text=Item3" },
-  ];
-
-  const recommendedProducts = [
-    { id: 1, name: "Customized Mug", image_url: "https://placehold.co/150x150/D3A173/FFFFFF?text=Rec1" },
-    { id: 2, name: "DIY Painting Kit", image_url: "https://placehold.co/150x150/D3A173/FFFFFF?text=Rec2" },
-    { id: 3, name: "Smart Watch", image_url: "https://placehold.co/150x150/D3A173/FFFFFF?text=Rec3" },
-  ];
 
   const handleImageUpload = (event) => {
     playSound(clickSoundRef, 'click', soundSettings); // Play click sound
@@ -1329,7 +1428,7 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             </div>
 
             {/* Profile Details (display only) */}
-            <div className="w-full max-w-md space-y-4 mb-8">
+            <div className="w-full max-w-2xl space-y-4 mb-8 grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Increased max-w and added grid */}
               <div>
                 <label className="block text-lg font-semibold text-[var(--primary-color)] mb-1">Username:</label>
                 <p className="w-full p-3 border border-gray-300 rounded-md bg-[var(--main-bg-color)] text-[var(--primary-color)]">
@@ -1342,31 +1441,29 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
                   {user.email}
                 </p>
               </div>
-              <div>
-                <label htmlFor="password" className="block text-lg font-semibold text-[var(--primary-color)] mb-1">Password:</label>
-                {/* Removed password input field */}
-                <button onClick={() => playSound(clickSoundRef, 'click', soundSettings)} className="mt-2 text-sm text-[var(--primary-color)] hover:underline transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">Change Password</button>
+              {/* Removed password change section */}
+              <div className="md:col-span-2"> {/* Make save changes button span two columns on medium screens */}
+                <button onClick={handleSaveChanges} className="w-full px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
+                  Save Changes
+                </button>
               </div>
-              <button onClick={handleSaveChanges} className="w-full px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
-                Save Changes
-              </button>
             </div>
 
             {/* Recent Bookmarked Items */}
-            <div className="w-full max-w-lg mb-8"> {/* Increased max-w-md to max-w-lg */}
-              <h3 className="text-2xl font-bold text-[var(--primary-color)] mb-4">Recent Bookmarked Items</h3>
-              <div className="flex overflow-x-auto pb-4 space-x-4 custom-scrollbar">
-                {recentBookmarks.map(item => (
-                  <div key={item.id} className="flex-shrink-0 w-48 text-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"> {/* Increased width */}
-                    <img src={item.image_url} alt={item.name} className="w-full h-48 object-cover rounded-md mb-2 border-2 border-[var(--border-color)]" /> {/* Increased height */}
-                    <p className="text-sm text-[var(--primary-color)]">{item.name}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="w-full max-w-full mb-8">
+              <ProductSection
+                title="Recent Bookmarked Items"
+                products={recentBookmarks} // Pass fetched bookmarks
+                onProductClick={onProductClick}
+                onAddProductToWishlist={onAddProductToWishlist}
+                soundSettings={soundSettings}
+                clickSoundRef={clickSoundRef}
+                showSeeMore={false} // No "See More" for this section
+              />
             </div>
 
             {/* Gifting Contacts */}
-            <div className="w-full max-w-md mb-8">
+            <div className="w-full max-w-2xl mb-8"> {/* Increased max-w */}
               <h3 className="text-2xl font-bold text-[var(--primary-color)] mb-4">Gifting Contacts</h3>
               {giftingContacts.length > 0 ? (
                 <ul className="space-y-2 mb-4">
@@ -1422,16 +1519,16 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             </div>
 
             {/* Recommended Products */}
-            <div className="w-full max-w-lg mb-8"> {/* Increased max-w-md to max-w-lg */}
-              <h3 className="text-2xl font-bold text-[var(--primary-color)] mb-4">Recommended Products</h3>
-              <div className="flex overflow-x-auto pb-4 space-x-4 custom-scrollbar">
-                {recommendedProducts.map(item => (
-                  <div key={item.id} className="flex-shrink-0 w-48 text-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"> {/* Increased width */}
-                    <img src={item.image_url} alt={item.name} className="w-full h-48 object-cover rounded-md mb-2 border-2 border-[var(--border-color)]" /> {/* Increased height */}
-                    <p className="text-sm text-[var(--primary-color)]">{item.name}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="w-full max-w-full mb-8">
+              <ProductSection
+                title="Recommended Products"
+                products={recommendedProducts} // Pass fetched recommendations
+                onProductClick={onProductClick}
+                onAddProductToWishlist={onAddProductToWishlist}
+                soundSettings={soundSettings}
+                clickSoundRef={clickSoundRef}
+                showSeeMore={false} // No "See More" for this section
+              />
               <p className="text-xs text-gray-500 mt-2 text-center">
                 Recommendations are based on your quiz results and search history. Your privacy is important to us.
               </p>
@@ -1974,7 +2071,8 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
           alert('Failed to add to wishlist: ' + error.message);
         } else {
           setBookmarkedProducts(prev => [...prev, product]);
-          handleShowWishlistSuccess(product.name);
+          // handleShowWishlistSuccess(product.name); // This function is not passed here, assumed to be handled by parent
+          alert(`${product.name} added to wishlist!`);
         }
       }
     } catch (error) {
@@ -2181,9 +2279,9 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
                       )}
                     </div>
                     <p className={`text-[var(--primary-color)] ${expandedComments[comment.id] ? '' : 'line-clamp-3'}`}>
-                      {comment.text}
+                      {comment.comment_text} {/* Corrected from comment.text to comment.comment_text */}
                     </p>
-                    {comment.text.length > 150 && ( // Arbitrary length to show "Read More"
+                    {comment.comment_text.length > 150 && ( // Arbitrary length to show "Read More"
                       <button
                         onClick={() => toggleCommentExpansion(comment.id)}
                         className="text-sm text-[var(--primary-color)] hover:underline mt-2"
@@ -2238,50 +2336,78 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
 // New Recommended Page Component
 const RecommendedPage = ({ user, hasTakenQuiz, onQuizMeClick, onSignInClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef }) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [recommendedProducts, setRecommendedProducts] = useState([]); // State for products
+  const [generalRecommendedProducts, setGeneralRecommendedProducts] = useState([]);
+  const [contactSpecificIdeas, setContactSpecificIdeas] = useState([]); // Stores ideas grouped by contact
 
-  // --- SUPABASE INTEGRATION: Fetch recommended products ---
+  // --- SUPABASE INTEGRATION: Fetch recommended products and contact-specific ideas ---
   useEffect(() => {
-    const fetchRecommendedProducts = async () => {
-      if (!user.isLoggedIn || !hasTakenQuiz || !user.id) {
-        setRecommendedProducts([]); // Clear recommendations if not logged in or quiz not taken
+    const fetchRecommendedData = async () => {
+      if (!user.isLoggedIn || !user.id) {
+        setGeneralRecommendedProducts([]);
+        setContactSpecificIdeas([]);
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
-      // Fetch quiz answers from profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('quiz_answers')
-        .eq('id', user.id)
-        .single();
 
-      if (profileError || !profile || !profile.quiz_answers) {
-        console.error('Error fetching quiz answers for recommendations:', profileError);
-        setRecommendedProducts([]);
-        setIsLoading(false);
-        return;
+      // Fetch general recommendations (if quiz taken)
+      if (hasTakenQuiz) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('quiz_answers')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError || !profile || !profile.quiz_answers) {
+          console.error('Error fetching quiz answers for general recommendations:', profileError);
+        } else {
+          // In a real scenario, you would use quizAnswers to filter/order products more intelligently.
+          // For this demo, we'll just fetch some random products or top-rated ones.
+          const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .limit(10) // Fetch a limited number of products
+            .order('rating', { ascending: false }); // Example: order by rating
+
+          if (error) {
+            console.error('Error fetching general recommended products:', error);
+          } else {
+            setGeneralRecommendedProducts(data);
+          }
+        }
       }
 
-      const quizAnswers = profile.quiz_answers;
-      // In a real scenario, you would use quizAnswers to filter/order products more intelligently.
-      // For this demo, we'll just fetch some random products or top-rated ones.
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .limit(10) // Fetch a limited number of products
-        .order('rating', { ascending: false }); // Example: order by rating
+      // Fetch contact-specific gift ideas
+      const { data: giftIdeasData, error: giftIdeasError } = await supabase
+        .from('contact_gift_ideas')
+        .select(`
+          *,
+          gifting_contacts (contact_name)
+        `)
+        .eq('user_id', user.id)
+        .not('contact_id', 'is', null) // Only fetch ideas associated with a contact
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching recommended products:', error);
+      if (giftIdeasError) {
+        console.error('Error fetching contact-specific gift ideas:', giftIdeasError);
       } else {
-        setRecommendedProducts(data);
+        // Group ideas by contact
+        const groupedIdeas = giftIdeasData.reduce((acc, idea) => {
+          const contactName = idea.gifting_contacts?.contact_name || 'Unknown Contact';
+          if (!acc[contactName]) {
+            acc[contactName] = [];
+          }
+          acc[contactName].push(idea);
+          return acc;
+        }, {});
+        setContactSpecificIdeas(groupedIdeas);
       }
+
       setIsLoading(false);
     };
 
-    fetchRecommendedProducts();
+    fetchRecommendedData();
   }, [user.isLoggedIn, hasTakenQuiz, user.id]); // Re-fetch when these dependencies change
 
   const handleTakeQuizPrompt = () => {
@@ -2313,7 +2439,7 @@ const RecommendedPage = ({ user, hasTakenQuiz, onQuizMeClick, onSignInClick, onP
               Sign In
             </button>
           </div>
-        ) : !hasTakenQuiz ? (
+        ) : !hasTakenQuiz && Object.keys(contactSpecificIdeas).length === 0 ? (
           <div className="text-center text-xl text-[var(--primary-color)] py-12 bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)]">
             <p className="mb-4">Recommendations are provided through quiz answers.</p>
             <button
@@ -2326,34 +2452,49 @@ const RecommendedPage = ({ user, hasTakenQuiz, onQuizMeClick, onSignInClick, onP
         ) : isLoading ? (
           <div className="text-center text-xl text-[var(--primary-color)]">Loading recommendations...</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recommendedProducts.map((product) => (
-              <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-1 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
-                <div className="w-full h-84 bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2"
-                  onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }}>
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x280/A1D3B3/FFFFFF?text=${product.name.replace(/\s/g, '+')}`} />
-                  <p className="absolute bottom-2 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-sm">${product.price}</p>
-                </div>
-                <h3 className="text-xl font-semibold text-[var(--primary-color)] text-center mb-2">{product.name}</h3>
-                <div className="flex flex-col space-y-3 w-full px-2"> {/* Increased space-y from 2 to 3 */}
-                  <button
-                    onClick={() => { onAddProductToWishlist(product); playSound(clickSoundRef, 'click', soundSettings); }}
-                    className="px-6 py-2 bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full">
-                    Add to Wyshlist
-                  </button>
-                  <a
-                    href={product.amazon_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => playSound(clickSoundRef, 'click', soundSettings)}
-                    className="px-6 py-2 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 text-center w-full"
-                  >
-                    Go Buy <i className="fas fa-external-link-alt ml-1"></i>
-                  </a>
-                </div>
+          <>
+            {/* General Recommendations (if quiz taken) */}
+            {hasTakenQuiz && generalRecommendedProducts.length > 0 && (
+              <ProductSection
+                title="General Recommendations"
+                products={generalRecommendedProducts}
+                onProductClick={onProductClick}
+                onAddProductToWishlist={onAddProductToWishlist}
+                soundSettings={soundSettings}
+                clickSoundRef={clickSoundRef}
+                showSeeMore={false}
+              />
+            )}
+
+            {/* Contact-Specific Gift Ideas */}
+            {Object.keys(contactSpecificIdeas).length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-3xl font-bold text-[var(--primary-color)] mb-6 text-center">Gift Ideas for Your Contacts</h2>
+                {Object.entries(contactSpecificIdeas).map(([contactName, ideas], index) => (
+                  <div key={index} className="mb-12 bg-[var(--box-bg-color)] p-6 rounded-lg shadow-md border-2 border-[var(--border-color)]">
+                    <h3 className="text-2xl font-semibold text-[var(--primary-color)] mb-4">For {contactName}</h3>
+                    <div className="prose prose-sm max-w-none text-[var(--primary-color)]">
+                      <p className="whitespace-pre-wrap">{ideas[0].generated_ideas_text}</p> {/* Displaying only the first idea's text for now */}
+                    </div>
+                    {/* You could optionally fetch/display products related to these ideas here */}
+                    {/* For now, just showing the text generated by LLM */}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+
+            {!hasTakenQuiz && Object.keys(contactSpecificIdeas).length === 0 && (
+              <div className="text-center text-xl text-[var(--primary-color)] py-12 bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)]">
+                <p className="mb-4">No recommendations found yet. Take the quiz or add gift ideas for your contacts to see them here!</p>
+                <button
+                  onClick={handleTakeQuizPrompt}
+                  className="px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
+                >
+                  Take Quiz ✨
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -2457,7 +2598,17 @@ const TermsAndConditionsPage = ({ onBack, soundSettings, clickSoundRef }) => {
       <div className="w-full mx-auto px-4 md:px-12 py-12 bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)]"> {/* Adjusted padding */}
         <h2 className="text-3xl font-bold text-[var(--primary-color)] mb-6 text-center">WyshDrop Terms of Service</h2>
         <div className="text-[var(--primary-color)] text-lg leading-relaxed space-y-4">
-          <p>Welcome to WyshDrop! These Terms of Service ("Terms")... (content truncated for brevity)</p>
+          <p>Welcome to WyshDrop! These Terms of Service ("Terms") govern your use of the WyshDrop website, mobile applications, and services (collectively, the "Service"). By accessing or using the Service, you agree to be bound by these Terms.</p>
+          <p><strong>1. Acceptance of Terms:</strong> By creating an account, accessing, or using the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms, as well as our Privacy Policy and Cookie Use policy. If you do not agree with any part of these Terms, you may not access or use the Service.</p>
+          <p><strong>2. Changes to Terms:</strong> We reserve the right to modify these Terms at any time. We will notify you of any changes by posting the new Terms on this page and updating the "Last Updated" date. Your continued use of the Service after such modifications constitutes your acceptance of the revised Terms.</p>
+          <p><strong>3. User Accounts:</strong> To access certain features of the Service, you may be required to create an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete. You are responsible for safeguarding your password and for any activities or actions under your account.</p>
+          <p><strong>4. Use of the Service:</strong> You agree to use the Service only for lawful purposes and in accordance with these Terms. You are prohibited from using the Service for any illegal or unauthorized purpose, or to engage in any activity that is harmful, fraudulent, or violates the rights of others.</p>
+          <p><strong>5. Content:</strong> You are responsible for any content you post, upload, or otherwise make available through the Service. By providing content, you grant WyshDrop a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, publish, and distribute such content in connection with the Service.</p>
+          <p><strong>6. Intellectual Property:</strong> All intellectual property rights in the Service and its content (excluding user-provided content) are owned by WyshDrop or its licensors. You may not use any trademarks, logos, or other proprietary graphics without our prior written consent.</p>
+          <p><strong>7. Disclaimers:</strong> The Service is provided "as is" and "as available" without warranties of any kind, either express or implied. WyshDrop does not warrant that the Service will be uninterrupted, error-free, or secure.</p>
+          <p><strong>8. Limitation of Liability:</strong> To the maximum extent permitted by applicable law, WyshDrop shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses, resulting from (a) your access to or use of or inability to access or use the Service; (b) any conduct or content of any third party on the Service; or (c) unauthorized access, use, or alteration of your transmissions or content.</p>
+          <p><strong>9. Governing Law:</strong> These Terms shall be governed and construed in accordance with the laws of [Your Jurisdiction], without regard to its conflict of law provisions.</p>
+          <p><strong>10. Contact Us:</strong> If you have any questions about these Terms, please contact us at info@wyshdrop.com.</p>
         </div>
         <div className="text-center mt-8">
           <button
@@ -2810,22 +2961,22 @@ const App = () => {
     {
       name: "Default",
       light: { mainBg: "#FFDDBD", primary: "#9A6E45", border: "#D3A173", boxBg: "#FFFFFF", buttonBg: "#9A6E45", footerBg: "#9A6E45" },
-      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#5A5BA6", boxBg: "#343570", buttonBg: "#272882", footerBg: "#000000" }
+      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#5A5BA6", boxBg: "#343570", buttonBg: "#000000", footerBg: "#000000" } // Changed buttonBg to black
     },
     {
       name: "Ocean Blue", // Desaturated pastel
       light: { mainBg: "#E0F2F7", primary: "#2C5282", border: "#A7D9EB", boxBg: "#FFFFFF", buttonBg: "#4299E1", footerBg: "#2C5282" },
-      dark: { mainBg: "#2C6B9E", primary: "#FFFFFF", border: "#000000", boxBg: "#07083C", buttonBg: "#000000", footerBg: "000000" } // Slightly darker pastel for dark mode
+      dark: { mainBg: "#2C6B9E", primary: "#FFFFFF", border: "#000000", boxBg: "#07083C", buttonBg: "#000000", footerBg: "000000" } // Changed buttonBg to black
     },
     {
       name: "Forest Green", // Desaturated forest green
       light: { mainBg: "#EAF4E4", primary: "#4F7942", border: "#C8DCCB", boxBg: "#FFFFFF", buttonBg: "#6B8E23", footerBg: "#4F7942" },
-      dark: { mainBg: "#43631B", primary: "#FFFFFF", border: "#000000", boxBg: "#063A0D", buttonBg: "#000000", footerBg: "#000000" }
+      dark: { mainBg: "#43631B", primary: "#FFFFFF", border: "#000000", boxBg: "#063A0D", buttonBg: "#000000", footerBg: "#000000" } // Changed buttonBg to black
     },
     {
       name: "Lavender", // Light lavender
       light: { mainBg: "#F8F0FF", primary: "#7753A5", border: "#E1CCF7", boxBg: "#FFFFFF", buttonBg: "#A58EDF", footerBg: "#9370DB" },
-      dark: { mainBg: "#3C1C55", primary: "#FFFFFF", border: "#000000", boxBg: "#1D063A", buttonBg: "#000000", footerBg: "#000000" }
+      dark: { mainBg: "#3C1C55", primary: "#FFFFFF", border: "#000000", boxBg: "#1D063A", buttonBg: "#000000", footerBg: "#000000" } // Changed buttonBg to black
     },
   ];
 
@@ -3288,7 +3439,7 @@ const App = () => {
   const handleRecommendedClick = () => {
     if (!user.isLoggedIn) {
       setCurrentPage('cover'); // Redirect to cover page if not logged in
-    } else if (!hasTakenQuiz) {
+    } else if (!hasTakenQuiz && giftingContacts.length === 0) { // Only show prompt if no quiz taken AND no contacts with ideas
       setShowQuizPromptModal(true); // Show quiz prompt if logged in but no quiz taken
     } else {
       setCurrentPage('recommended'); // Go to recommended page
@@ -3377,7 +3528,7 @@ const App = () => {
           {/* Category Navigation Bar (now always rendered) */}
           {/* Positioned relative to header's height (approx 64px based on p-4) */}
           <nav className={`w-full bg-[var(--border-color)] py-2 px-4 md:px-12 overflow-x-auto whitespace-nowrap shadow-md custom-scrollbar-horizontal transition-transform duration-300 ${isHeaderVisible ? 'top-16' : '-translate-y-full'} fixed left-0 z-20`}>
-            <div className="flex space-x-6 justify-center md:justify-start">
+            <div className="flex space-x-6 justify-center md:justify-start pt-2 pb-1"> {/* Increased top padding for spacing */}
               {categories.map((category) => (
                 <a
                   key={category}
@@ -3488,6 +3639,8 @@ const App = () => {
               onAboutUsClick={() => handleSidebarNavigation('about-us')}
               giftingContacts={giftingContacts} // Pass gifting contacts
               setGiftingContacts={setGiftingContacts} // Pass setter for contacts
+              onProductClick={handleProductClick} // Pass product click handler
+              onAddProductToWishlist={handleAddProductToWishlist} // Pass add to wishlist handler
               soundSettings={soundSettings}
               clickSoundRef={clickSoundRef}
             />
@@ -3495,7 +3648,30 @@ const App = () => {
           {currentPage === 'how-it-works' && (
             <GenericPage
               title="How WyshDrop Works"
-              content="Learn how WyshDrop simplifies gifting! From creating wishlists to sending hints, we make every step easy and fun. Get started in minutes!"
+              content={`
+                <h3 class="text-3xl font-bold text-[var(--primary-color)] mb-4 text-center">Your Ultimate Gifting Companion</h3>
+                <p class="mb-6 text-center">WyshDrop is designed to make gifting effortless, thoughtful, and fun. Whether you're searching for the perfect present, dropping a hint for yourself, or organizing your gift ideas, we've got you covered.</p>
+
+                <h4 class="text-2xl font-semibold text-[var(--primary-color)] mb-3">1. Discover & Explore</h4>
+                <p class="mb-4">Browse through a vast collection of products across various categories like Books, Tech, Accessories, and more. Our intuitive search and filtering options help you narrow down your choices quickly. Explore trending items, popular searches, or dive deep into specific subcategories.</p>
+
+                <h4 class="text-2xl font-semibold text-[var(--primary-color)] mb-3">2. Create & Manage Wishlists</h4>
+                <p class="mb-4">Found something you love? Easily add it to your personal wishlist. Keep track of all the items you desire, organize them, and revisit them anytime. Your wishlist can be a private space for your aspirations or a guide for your loved ones.</p>
+
+                <h4 class="text-2xl font-semibold text-[var(--primary-color)] mb-3">3. Get Personalized Recommendations</h4>
+                <p class="mb-4">Take our fun "Quiz Me" quiz to receive highly personalized gift ideas tailored to your preferences or the recipient's. The more information you provide, the better our recommendations become! You can even associate these ideas with specific gifting contacts.</p>
+
+                <h4 class="text-2xl font-semibold text-[var(--primary-color)] mb-3">4. Send Subtle Hints</h4>
+                <p class="mb-4">Want to receive a specific gift without explicitly asking? Our "Hint" feature allows you to subtly suggest items from your wishlist to your gifting contacts. It's the perfect way to ensure you get what you truly want, making gifting a win-win for everyone.</p>
+
+                <h4 class="text-2xl font-semibold text-[var(--primary-color)] mb-3">5. Connect with Gifting Contacts</h4>
+                <p class="mb-4">Add your friends, family, and colleagues as gifting contacts. This helps you keep track of their preferences, quiz results, and even their wishlists (if they choose to share them), making thoughtful gifting easier than ever.</p>
+
+                <h4 class="text-2xl font-semibold text-[var(--primary-color)] mb-3">6. Customize Your Experience</h4>
+                <p class="mb-4">Personalize WyshDrop to your liking with various settings, including dark mode, sound effects, and custom color schemes. Make the app truly yours!</p>
+
+                <p class="mt-8 text-center text-xl font-semibold">WyshDrop: Making every gift a perfect match!</p>
+              `}
               soundSettings={soundSettings}
               clickSoundRef={clickSoundRef}
             />
@@ -3671,6 +3847,7 @@ const App = () => {
             soundSettings={soundSettings}
             clickSoundRef={clickSoundRef}
             user={user} // Pass user to QuizModal
+            giftingContacts={giftingContacts} // Pass gifting contacts to QuizModal
           />
 
           {/* Quiz Prompt Modal (for Recommended page) */}
@@ -3812,4 +3989,5 @@ const App = () => {
 };
 
 export default App;
+
 
