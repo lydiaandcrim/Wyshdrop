@@ -1064,7 +1064,7 @@ const SettingsPage = ({ applyPalette, colorPalettes, isDarkMode, toggleDarkMode,
           <span className="text-xl font-semibold text-[var(--primary-color)]">Dark Mode</span>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" value="" className="sr-only peer" checked={isDarkMode} onChange={() => { toggleDarkMode(); playSound(clickSoundRef, 'click', soundSettings); }} />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
           </label>
         </div>
 
@@ -1076,28 +1076,28 @@ const SettingsPage = ({ applyPalette, colorPalettes, isDarkMode, toggleDarkMode,
               <span className="text-lg text-[var(--primary-color)]">Enable All Sounds</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={soundSettings.isAllSoundEnabled} onChange={() => handleSoundToggle('all')} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
               </label>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-lg text-[var(--primary-color)]">Click Sound</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={soundSettings.isClickSoundEnabled} onChange={() => handleSoundToggle('isClickSoundEnabled')} disabled={!soundSettings.isAllSoundEnabled && !soundSettings.isClickSoundEnabled} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
               </label>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-lg text-[var(--primary-color)]">Scroll Sound</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={soundSettings.isScrollSoundEnabled} onChange={() => handleSoundToggle('isScrollSoundEnabled')} disabled={!soundSettings.isAllSoundEnabled && !soundSettings.isScrollSoundEnabled} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
               </label>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-lg text-[var(--primary-color)]">Page Transition Sound</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={soundSettings.isPageTransitionSoundEnabled} onChange={() => handleSoundToggle('isPageTransitionSoundEnabled')} disabled={!soundSettings.isAllSoundEnabled && !soundSettings.isPageTransitionSoundEnabled} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
               </label>
             </div>
           </div>
@@ -1428,7 +1428,7 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             </div>
 
             {/* Profile Details (display only) */}
-            <div className="w-full max-w-2xl space-y-4 mb-8 grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Increased max-w and added grid */}
+            <div className="w-full max-w-2xl mx-auto space-y-4 mb-8"> {/* Increased max-w and added grid */}
               <div>
                 <label className="block text-lg font-semibold text-[var(--primary-color)] mb-1">Username:</label>
                 <p className="w-full p-3 border border-gray-300 rounded-md bg-[var(--main-bg-color)] text-[var(--primary-color)]">
@@ -1450,7 +1450,7 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             </div>
 
             {/* Recent Bookmarked Items */}
-            <div className="w-full max-w-full mb-8">
+            <div className="w-full max-w-2xl mx-auto mb-8">
               <ProductSection
                 title="Recent Bookmarked Items"
                 products={recentBookmarks} // Pass fetched bookmarks
@@ -1463,7 +1463,7 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             </div>
 
             {/* Gifting Contacts */}
-            <div className="w-full max-w-2xl mb-8"> {/* Increased max-w */}
+            <div className="w-full max-w-2xl mx-auto mb-8"> {/* Increased max-w */}
               <h3 className="text-2xl font-bold text-[var(--primary-color)] mb-4">Gifting Contacts</h3>
               {giftingContacts.length > 0 ? (
                 <ul className="space-y-2 mb-4">
@@ -1519,7 +1519,7 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             </div>
 
             {/* Recommended Products */}
-            <div className="w-full max-w-full mb-8">
+            <div className="w-full max-w-2xl mx-auto mb-8">
               <ProductSection
                 title="Recommended Products"
                 products={recommendedProducts} // Pass fetched recommendations
@@ -1535,7 +1535,7 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             </div>
 
             {/* Sign Out and Delete Account */}
-            <div className="w-full max-w-md flex flex-col space-y-4 mt-8">
+            <div className="w-full max-w-2xl mx-auto flex flex-col space-y-4 mt-8">
               <button
                 onClick={() => { onSignOut(); playSound(clickSoundRef, 'click', soundSettings); }}
                 className="w-full px-6 py-3 bg-red-500 text-white font-bold rounded-md shadow-md hover:bg-red-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
@@ -2903,7 +2903,7 @@ const App = () => {
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // IMPORTANT: YOU MUST REPLACE THESE EMPTY STRINGS WITH DIRECT, RAW LINKS TO YOUR OWN HOSTED SOUND FILES.
         // Generic placeholder URLs (like soundhelix.com) often do not work due to CORS policies or direct linking restrictions.
-        // You need to host your MP3/WAV files yourself (e.g., on Firebase Storage, AWS S3, or another CDN)
+        // You need to host your MP3/WAV files yourself (e.e.g., on Firebase Storage, AWS S3, or another CDN)
         // and provide the direct, publicly accessible URLs here.
         //
         // For GitHub, ensure you are using the "Raw" link (e.g., raw.githubusercontent.com/your-username/your-repo/main/sounds/click.mp3)
@@ -2961,22 +2961,22 @@ const App = () => {
     {
       name: "Default",
       light: { mainBg: "#FFDDBD", primary: "#9A6E45", border: "#D3A173", boxBg: "#FFFFFF", buttonBg: "#9A6E45", footerBg: "#9A6E45" },
-      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#5A5BA6", boxBg: "#343570", buttonBg: "#000000", footerBg: "#000000" } // Changed buttonBg to black
+      dark: { mainBg: "#000000", primary: "#FFFFFF", border: "#5A5BA6", boxBg: "#343570", buttonBg: "#333333", footerBg: "#000000" } // Changed buttonBg to #333333
     },
     {
       name: "Ocean Blue", // Desaturated pastel
       light: { mainBg: "#E0F2F7", primary: "#2C5282", border: "#A7D9EB", boxBg: "#FFFFFF", buttonBg: "#4299E1", footerBg: "#2C5282" },
-      dark: { mainBg: "#2C6B9E", primary: "#FFFFFF", border: "#000000", boxBg: "#07083C", buttonBg: "#000000", footerBg: "000000" } // Changed buttonBg to black
+      dark: { mainBg: "#2C6B9E", primary: "#FFFFFF", border: "#000000", boxBg: "#07083C", buttonBg: "#333333", footerBg: "000000" } // Changed buttonBg to #333333
     },
     {
       name: "Forest Green", // Desaturated forest green
       light: { mainBg: "#EAF4E4", primary: "#4F7942", border: "#C8DCCB", boxBg: "#FFFFFF", buttonBg: "#6B8E23", footerBg: "#4F7942" },
-      dark: { mainBg: "#43631B", primary: "#FFFFFF", border: "#000000", boxBg: "#063A0D", buttonBg: "#000000", footerBg: "#000000" } // Changed buttonBg to black
+      dark: { mainBg: "#43631B", primary: "#FFFFFF", border: "#000000", boxBg: "#063A0D", buttonBg: "#333333", footerBg: "#000000" } // Changed buttonBg to #333333
     },
     {
       name: "Lavender", // Light lavender
       light: { mainBg: "#F8F0FF", primary: "#7753A5", border: "#E1CCF7", boxBg: "#FFFFFF", buttonBg: "#A58EDF", footerBg: "#9370DB" },
-      dark: { mainBg: "#3C1C55", primary: "#FFFFFF", border: "#000000", boxBg: "#1D063A", buttonBg: "#000000", footerBg: "#000000" } // Changed buttonBg to black
+      dark: { mainBg: "#3C1C55", primary: "#FFFFFF", border: "#000000", boxBg: "#1D063A", buttonBg: "#333333", footerBg: "#000000" } // Changed buttonBg to #333333
     },
   ];
 
@@ -3518,7 +3518,7 @@ const App = () => {
             isHeaderVisible={isHeaderVisible}
             toggleHeaderVisibility={toggleHeaderVisibility}
             user={user} // Pass user object
-            onQuizMeClick={() => setShowQuizModal(true)} // Direct quiz modal open
+            onQuizMeClick={() => setShowQuizModal(true)} // Direct quiz modal open 
             onDonateClick={handleDonateClick}
             onFeedbackClick={() => setIsGeneralFeedbackModalOpen(true)}
             onSignInClick={handleCoverSignInClick} // For profile dropdown sign-in
@@ -3529,8 +3529,8 @@ const App = () => {
 
           {/* Category Navigation Bar (now always rendered) */}
           {/* Positioned relative to header's height (approx 64px based on p-4) */}
-          <nav className={`w-full bg-[var(--border-color)] py-2 px-4 md:px-12 overflow-x-auto whitespace-nowrap shadow-md custom-scrollbar-horizontal transition-transform duration-300 ${isHeaderVisible ? 'top-16' : '-translate-y-full'} fixed left-0 z-20`}>
-            <div className="flex space-x-6 justify-center md:justify-start pt-2 pb-1"> {/* Increased top padding for spacing */}
+          <nav className={`w-full bg-[var(--border-color)] py-2 px-2 sm:px-4 md:px-12 overflow-x-auto whitespace-nowrap shadow-md custom-scrollbar-horizontal transition-transform duration-300 ${isHeaderVisible ? 'top-16' : '-translate-y-full'} fixed left-0 z-20`}>
+            <div className="flex space-x-6 justify-start pt-2 pb-1"> {/* Increased top padding for spacing */}
               {categories.map((category) => (
                 <a
                   key={category}
@@ -3820,7 +3820,7 @@ const App = () => {
               onQuizMeClick={() => setShowQuizModal(true)}
               onSignInClick={handleCoverSignInClick}
               onProductClick={handleProductClick}
-              onAddProductToWishlist={handleAddProductToWishlist}
+              onAddProductToWishlist={onAddProductToWishlist}
               soundSettings={soundSettings}
               clickSoundRef={clickSoundRef}
             />
@@ -3971,7 +3971,7 @@ const App = () => {
           border-radius: 3px;
         }
         .custom-scrollbar-horizontal::-webkit-scrollbar-thumb {
-          background: transparent; /* Made transparent by default */
+          background: var(--primary-color); /* Made transparent by default */
           border-radius: 3px;
         }
         .custom-scrollbar-horizontal::-webkit-scrollbar-thumb:hover {
@@ -3991,5 +3991,3 @@ const App = () => {
 };
 
 export default App;
-
-
