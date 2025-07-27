@@ -96,7 +96,15 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
         query = query.limit(10);
       }
       else {
-        query = query.eq('category', title).limit(10); // Filter by category name
+  // Determine if the title is a main category or a subcategory
+  // This is a simplified check. A more robust solution might involve a lookup table or a dedicated prop.
+  // For now, assuming if it's not a main category title, it's a subcategory.
+        const mainCategories = ["Trending", "Books", "Accessories", "DIY / Art", "Tech", "Cups / Drinks", "Stationary", "Music", "Figurines / Plushies", "Gift Cards", "Blooms"];
+        if (mainCategories.includes(title)) {
+          query = query.eq('category', title).limit(10); // Filter by main category name
+        } else {
+          query = query.eq('subcategory', title).limit(10); // Filter by subcategory name
+        }
       }
 
       const { data, error } = await query;
