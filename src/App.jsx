@@ -106,13 +106,15 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
           query = query.eq('subcategory', title).limit(10); // Filter by subcategory name
         }
       }
-
+      
       const { data, error } = await query;
 
       if (error) {
         console.error(`Error fetching products for ${title}:`, error);
+        console.log(`Supabase fetch error details for ${title}:`, error); // <--- ADD THIS LINE
       } else {
         setProducts(data);
+        console.log(`Supabase fetched data for ${title}:`, data); // <--- ADD THIS LINE
       }
       setIsLoading(false);
     };
@@ -181,7 +183,7 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
               <div className="text-[var(--primary-color)] text-center py-4 w-full">Loading products...</div>
             ) : products.length > 0 ? (
               products.map((product) => (
-                <div key={product.id} className="flex-shrink-0 w-56 h-80 bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] flex flex-col items-center justify-between p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
+                <div key={product.id} className="flex-shrink-0 w-56 h-96 bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] flex flex-col items-center justify-between p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
                   {/* Product image with adjusted height */}
                   <div className="w-48 h-56 bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2"
                     onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }}> {/* Adjusted padding and card size */}
@@ -189,10 +191,21 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
                     {/* Price inside the image box */}
                     <p className="absolute bottom-2 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-sm">${product.price}</p>
                   </div>
-                  <h3 className="text-lg font-semibold text-[var(--primary-color)] text-center mb-2">{product.name}</h3> {/* Reduced margin-bottom here */}
+                  <h3 className={`font-semibold text-[var(--primary-color)] text-center mb-2 ${product.name.length > 25 ? 'text-base' : 'text-lg'}`}> {/* Dynamically adjust font size */}
+                    {product.name}
+                  </h3> {/* Reduced margin-bottom here */}
                   <div className="flex flex-col space-y-3 w-full px-2"> {/* Increased space-y from 2 to 3 */}
                     <button
-                      onClick={() => { onAddProductToWishlist(product); playSound(clickSoundRef, 'click', soundSettings); }}
+                      onClick={() => {
+                        // Check if onAddProductToWishlist is provided and is a function before calling it
+                        if (typeof onAddProductToWishlist === 'function') {
+                          onAddProductToWishlist(product);
+                        } else {
+                          console.error("Error: 'onAddProductToWishlist' function is not available.");
+                          alert("Wishlist functionality is currently unavailable.");
+                        }
+                        playSound(clickSoundRef, 'click', soundSettings);
+                      }}
                       className="px-4 py-2 bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full">
                       Add to Wyshlist
                     </button>
@@ -1615,7 +1628,7 @@ const SubcategoryPage = ({ subcategoryName, onProductClick, onAddProductToWishli
       if (error) {
         console.error(`Error fetching products for ${subcategoryName}:`, error);
       } else {
-        setSubcategoryProducts(data);
+        setSubcategoryProducts(data ? data.filter(p => p && p.id && p.name && p.image_url && p.price) : []);
       }
       setIsLoading(false);
     };
@@ -1628,8 +1641,8 @@ const SubcategoryPage = ({ subcategoryName, onProductClick, onAddProductToWishli
       {/* Changed to h-0 pb-[33.33%] for responsive aspect ratio, object-contain for image */}
       <section className="w-full h-0 pb-[33.33%] mb-8 rounded-lg shadow-lg border-2 border-[var(--border-color)] relative flex items-center justify-center">
         <img
-          src={`https://placehold.co/1200x400/D3A173/FFFFFF?text=${subcategoryName.replace(/\s/g, '+')}+Banner`} // Dynamic placeholder
-          alt={`${subcategoryName} Banner`}
+          src={`https://placehold.co/1200x400/D3A173/FFFFFF?text=${(product.subcategory || 'Product').replace(/\s/g, '+')}+Banner`} // Use subcategory for banner
+          alt={`${product.subcategory || product.name} Banner`} // Fallback to product name if subcategory is missing
           className="absolute inset-0 w-full h-full object-contain rounded-lg"
           onError={(e) => e.target.src = "https://placehold.co/1200x400/D3A173/FFFFFF?text=Image+Load+Error"}
         />
@@ -1805,7 +1818,7 @@ const HintModal = ({ isOpen, onClose, product, giftingContacts, setGiftingContac
     }
   };
 
-  const handleSendHint = () => {
+  const handleSendHint = async () => {
     playSound(clickSoundRef, 'click', soundSettings); // Play click sound
     if (!agreedToTerms) {
       alert('Please agree to the Hinting Terms & Conditions.');
@@ -1817,8 +1830,68 @@ const HintModal = ({ isOpen, onClose, product, giftingContacts, setGiftingContac
     }
 
     const contactsToSend = giftingContacts.filter(contact => selectedContacts.includes(contact.id));
-    console.log(`Sending hint for "${product.name}" to:`, contactsToSend);
+    try {
+  // 1. Record the hint in your Supabase database
+  // You'll need a table, e.g., 'sent_hints', with columns like:
+  // id (PK), user_id (FK to profiles), product_id (FK to products),
+  // recipient_contact_id (FK to gifting_contacts), sent_at, status (e.g., 'sent', 'failed')
+
+  const hintRecords = contactsToSend.map(contact => ({
+    user_id: user.id,
+    product_id: product.id,
+    recipient_contact_id: contact.id,
+    sent_at: new Date().toISOString(),
+    status: 'pending', // Initial status, will be updated after email attempt
+    // You might also want to store the product name and recipient name for easier lookup
+    product_name: product.name,
+    recipient_name: contact.contact_name,
+    recipient_email: contact.contact_email,
+  }));
+
+  const { data: insertedHints, error: insertError } = await supabase
+    .from('sent_hints')
+    .insert(hintRecords)
+    .select();
+
+  if (insertError) {
+    console.error('Error recording hint in database:', insertError);
+    alert('Failed to record hint: ' + insertError.message);
+    return;
+  }
+  console.log('Hints recorded in database:', insertedHints);
+
+  // 2. Call a Supabase Edge Function (or similar backend) to send the email
+  // This is a placeholder. You would need to deploy a Supabase Edge Function
+  // that takes the product and contact details, and uses an email service (e.g., SendGrid, Nodemailer)
+  // to send the actual email.
+  const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-hint-email', {
+    body: {
+      product: product,
+      recipients: contactsToSend,
+      sender: {
+        username: user.username,
+        email: user.email,
+      },
+    },
+  });
+
+  if (emailError) {
+    console.error('Error sending hint email via Edge Function:', emailError);
+    alert('Failed to send hint email: ' + emailError.message);
+    // Optionally update the status of the recorded hints to 'failed'
+    await supabase.from('sent_hints').update({ status: 'failed' }).in('id', insertedHints.map(h => h.id));
+  } else {
+    console.log('Hint emails sent successfully:', emailResponse);
     alert(`Hint for "${product.name}" sent to selected contacts!`);
+    // Update the status of the recorded hints to 'sent'
+    await supabase.from('sent_hints').update({ status: 'sent' }).in('id', insertedHints.map(h => h.id));
+  }
+
+  onClose(); // Close the modal only after successful operations
+} catch (error) {
+  console.error("An unexpected error occurred while sending hint:", error);
+  alert("An unexpected error occurred. Please try again.");
+}
     onClose();
   };
 
@@ -3828,7 +3901,7 @@ const App = () => {
               onQuizMeClick={() => setShowQuizModal(true)}
               onSignInClick={handleCoverSignInClick}
               onProductClick={handleProductClick}
-              onAddProductToWishlist={onAddProductToWishlist}
+              onAddProductToWishlist={handleAddProductToWishlist}
               soundSettings={soundSettings}
               clickSoundRef={clickSoundRef}
             />
