@@ -87,7 +87,7 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
 
       // Implement filtering/ordering based on the section title
       if (title === "TRENDING") {
-        query = query.order('created_at', { ascending: false }).limit(10); // Example: newest 10 products
+        query = query.eq('category', 'Trending').order('created_at', { ascending: false }).limit(10); // Filter by 'Trending' category
       } else if (title === "Popular / Most Searched Items" || title.includes("Recommended for You")) {
         query = query.order('rating', { ascending: false }).limit(10); // Example: highest rated
       } else if (title.includes("for ")) { // Assuming "for [Contact Name]"
@@ -183,27 +183,29 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
               <div className="text-[var(--primary-color)] text-center py-4 w-full">Loading products...</div>
             ) : products.length > 0 ? (
               products.map((product) => (
-                <div key={product.id} className="flex-shrink-0 w-56 h-96 bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] flex flex-col items-center justify-between p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
-                  {/* Product image with adjusted height */}
-                  <div className="w-48 h-56 bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2"
-                    onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }}> {/* Adjusted padding and card size */}
+                <div key={product.id} className="flex-shrink-0 w-[240px] h-[380px] bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] flex flex-col items-center justify-between p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"> {/* Increased height slightly to accommodate buttons */}
+                  {/* Product image with adjusted height and padding */}
+                  <div
+                    className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2"
+                    onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }} // Moved onClick to the div
+                  >
                     <img
-                      src={product.image_url || `https://placehold.co/240x280/D3A173/FFFFFF?text=No+Image+Available`} // Fallback if image_url is missing
+                      src={product.image_url || `https://placehold.co/240x360/D3A173/FFFFFF?text=No+Image+Available`}
                       alt={product.name || 'Product Image'}
-                      className="w-full h-full object-cover rounded-md"
-                      onError={(e) => e.target.src = `https://placehold.co/240x280/D3A173/FFFFFF?text=Image+Error`} // Simpler error text
+                      className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] object-cover rounded-md"
+                      onError={(e) => e.target.src = `https://placehold.co/240x360/D3A173/FFFFFF?text=Image+Load+Error`}
                     />
                     {/* Price inside the image box */}
-                    <p className="absolute bottom-2 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-sm">${product.price}</p>
+                    <p className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-xs">${product.price}</p> {/* Adjusted price position and font size */}
                   </div>
                   {/* Container for the product title to control height and overflow */}
-                  <div className="h-20 flex items-center justify-center overflow-hidden"> {/* Fixed height for title area */}
-                    <h3 className={`font-semibold text-[var(--primary-color)] text-center ${product.name.length > 25 ? 'text-sm' : 'text-base'} line-clamp-3`}> {/* Smaller text, truncate to 3 lines */}
+                  <div className="h-16 flex items-center justify-center overflow-hidden"> {/* Reduced height for title area */}
+                    <h3 className={`font-semibold text-[var(--primary-color)] text-center text-base line-clamp-2`}> {/* Consistent text size, truncate to 2 lines */}
                       {product.name}
                     </h3>
                   </div>
           {/* Price and Add to Wyshlist button below */}
-                  <div className="flex flex-col space-y-3 w-full px-2"> {/* Increased space-y from 2 to 3 */}
+                  <div className="flex flex-col space-y-2 w-full px-1"> {/* Reduced space-y and px */}
                     <button
                       onClick={() => {
                         // Check if onAddProductToWishlist is provided and is a function before calling it
@@ -215,7 +217,7 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
                         }
                         playSound(clickSoundRef, 'click', soundSettings);
                       }}
-                      className="px-4 py-2 bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full">
+                      className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full"> {/* Smaller padding and font size */}
                       Add to Wyshlist
                     </button>
                     <a
@@ -223,7 +225,7 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => playSound(clickSoundRef, 'click', soundSettings)}
-                      className="px-4 py-2 bg-[var(--button-bg-color)] text-white rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 text-center w-full"
+                      className="px-3 py-1.5 text-sm bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 text-center w-full"
                     >
                       Go Buy <i className="fas fa-external-link-alt ml-1"></i>
                     </a>
@@ -326,7 +328,7 @@ const Header = ({ toggleSidebar, onSearchClick, onBookmarkClick, onSettingsClick
 };
 
 // Home Content Component
-const HomeContent = ({ onSeeMoreClick, onDiscoverClick, isLoggedIn, onAboutUsClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef }) => { // Added onProductClick prop
+const HomeContent = ({ onSeeMoreClick, onDiscoverClick, isLoggedIn, onAboutUsClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef, handleCategoryClick }) => { // Added handleCategoryClick prop
   const purposeBanners = [
     "https://placehold.co/1200x400/D3A173/FFFFFF?text=Our+Purpose+Banner+1",
     "https://placehold.co/1200x400/D3A173/FFFFFF?text=Our+Purpose+Banner+2",
@@ -384,17 +386,17 @@ const HomeContent = ({ onSeeMoreClick, onDiscoverClick, isLoggedIn, onAboutUsCli
         {/* All other sections now need horizontal padding */}
         <div className="w-full mx-auto"> {/* Adjusted margins to be smaller */}
           {/* Trending Section */}
-          <ProductSection title="TRENDING" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="TRENDING" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
 
           {/* New Sections */}
-          <ProductSection title="Books" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="Accessories" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="DIY / Art" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="Tech" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="Cups / Drinks" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="Stationary" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="Music" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-          <ProductSection title="Figurines / Plushies" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Books" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Accessories" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="DIY / Art" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Tech" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Cups / Drinks" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Stationary" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Music" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+          <ProductSection title="Figurines / Plushies" onSeeMoreClick={(title) => handleCategoryClick(null, title)} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
 
           {/* Discover Section */}
           <section className="relative flex flex-col items-center justify-center py-12 bg-[var(--main-bg-color)] rounded-lg shadow-inner border-2 border-[var(--border-color)] mx-4 md:mx-12"> {/* Adjusted padding and margin */}
@@ -557,7 +559,7 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
     setQuizResults(''); // Clear previous results
 
     // Construct prompt for LLM
-    let prompt = "Generate 3-5 unique and creative gift ideas based on the following preferences. For each idea, provide a brief reason why it's a good fit. Format the output as a numbered list.\n\n";
+    let prompt = "Generate 3-5 unique and creative gift ideas based on the following preferences, considering common product categories like Books, Accessories, Tech, DIY/Art, Cups/Drinks, Stationary, Music, Figurines/Plushies, Gift Cards, Blooms. For each idea, provide a brief reason why it's a good fit. Format the output as a numbered list.\n\n";
     Object.keys(answers).forEach(key => {
       const questionText = questions.find(q => q.id === key).text;
       const answerValue = answers[key].value;
@@ -994,7 +996,7 @@ const BookmarksPage = ({ bookmarkedProducts, soundSettings, clickSoundRef }) => 
           bookmarkedProducts.map((product) => (
             <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-4 flex flex-col items-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
               {/* Made image and card bigger */}
-              <img src={product.image_url} alt={product.name} className="w-full h-56 object-cover rounded-md mb-4" onError={(e) => e.target.src = `https://placehold.co/200x200/D3A173/FFFFFF?text=${product.name.replace(/\s/g, '+')}`} />
+              <img src={product.image_url} alt={product.name} className="w-full h-56 object-cover rounded-md mb-4" onError={(e) => e.target.src = `https://placehold.co/200x200/D3A173/FFFFFF?text=${(product.name || 'Product').replace(/\s/g, '+')}+Image`} /> // Updated text
               <h3 className="text-xl font-semibold text-[var(--primary-color)] mb-2 text-center">{product.name}</h3>
               <p className="text-lg text-gray-700 mb-2">${product.price}</p>
               <button onClick={() => playSound(clickSoundRef, 'click', soundSettings)} className="mt-auto px-6 py-2 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
@@ -1650,8 +1652,8 @@ const SubcategoryPage = ({ subcategoryName, onProductClick, onAddProductToWishli
       {/* Changed to h-0 pb-[33.33%] for responsive aspect ratio, object-contain for image */}
       <section className="w-full h-0 pb-[33.33%] mb-8 rounded-lg shadow-lg border-2 border-[var(--border-color)] relative flex items-center justify-center">
         <img
-          src={`https://placehold.co/1200x400/D3A173/FFFFFF?text=${(product.subcategory || 'Product').replace(/\s/g, '+')}+Banner`} // Use subcategory for banner
-          alt={`${product.subcategory || product.name} Banner`} // Fallback to product name if subcategory is missing
+          src={`https://placehold.co/1200x400/D3A173/FFFFFF?text=${subcategoryName.replace(/\s/g, '+')}+Banner`}
+          alt={`${subcategoryName} Banner`}
           className="absolute inset-0 w-full h-full object-contain rounded-lg"
           onError={(e) => e.target.src = "https://placehold.co/1200x400/D3A173/FFFFFF?text=Image+Load+Error"}
         />
@@ -1661,20 +1663,18 @@ const SubcategoryPage = ({ subcategoryName, onProductClick, onAddProductToWishli
         {isLoading ? (
           <div className="text-center text-xl text-[var(--primary-color)]">Loading products...</div>
         ) : subcategoryProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"> {/* Changed to 4 columns on large screens, reduced gap for tighter fit */}
             {subcategoryProducts.map((product) => (
-              <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-1 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
-                <div className="w-full h-84 bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2"
-                  onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }}> {/* Adjusted padding and added onClick */}
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x280/D3A173/FFFFFF?text=${product.name.replace(/\s/g, '+')}`} />
-                  {/* Price inside the image box */}
-                  <p className="absolute bottom-2 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-sm">${product.price}</p>
+              <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"> {/* Reduced overall product box padding to p-2 */}
+                <div className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2"> {/* Added p-2 for inner image padding, adjusted mb */}
+                  <img src={product.image_url} alt={product.name} className="absolute inset-0 w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x360/D3A173/FFFFFF?text=${(product.name || 'Product').replace(/\s/g, '+')}+Image+Load+Error`} /> {/* Updated placeholder text */}
+                  <p className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-xs">${product.price}</p> {/* Adjusted price position and font size */}
                 </div>
-                <h3 className="text-xl font-semibold text-[var(--primary-color)] text-center mb-2">{product.name}</h3>
-                <div className="flex flex-col space-y-3 w-full px-2"> {/* Increased space-y from 2 to 3 */}
+                <h3 className="text-base font-semibold text-[var(--primary-color)] text-center mb-1 line-clamp-2">{product.name}</h3> {/* Smaller font size, added line-clamp */}
+                <div className="flex flex-col space-y-2 w-full px-1"> {/* Smaller space-y and px */}
                   <button
                     onClick={() => { onAddProductToWishlist(product); playSound(clickSoundRef, 'click', soundSettings); }}
-                    className="px-6 py-2 bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full">
+                    className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full"> {/* Smaller padding and font size */}
                     Add to Wyshlist
                   </button>
                   <a
@@ -1682,7 +1682,7 @@ const SubcategoryPage = ({ subcategoryName, onProductClick, onAddProductToWishli
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => playSound(clickSoundRef, 'click', soundSettings)}
-                    className="px-6 py-2 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 text-center w-full"
+                    className="px-3 py-1.5 text-sm bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 text-center w-full"
                   >
                     Go Buy <i className="fas fa-external-link-alt ml-1"></i>
                   </a>
@@ -1701,6 +1701,30 @@ const SubcategoryPage = ({ subcategoryName, onProductClick, onAddProductToWishli
 
 // New Category Page Component
 const CategoryPage = ({ categoryName, onSeeMoreClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [categoryProducts, setCategoryProducts] = useState([]);
+
+  // --- SUPABASE INTEGRATION: Fetch products for the main category ---
+  useEffect(() => {
+    const fetchCategoryProducts = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('category', categoryName) // Filter by main category name
+        .limit(50); // Fetch a reasonable number, adjust as needed
+
+      if (error) {
+        console.error(`Error fetching products for category ${categoryName}:`, error);
+      } else {
+        setCategoryProducts(data ? data.filter(p => p && p.id && p.name && p.image_url && p.price) : []);
+      }
+      setIsLoading(false);
+    };
+
+    fetchCategoryProducts();
+  }, [categoryName]); // Re-fetch when categoryName changes
+
   // Define subcategories based on the main category
   const getSubcategories = (name) => {
     switch (name) {
@@ -1747,8 +1771,12 @@ const CategoryPage = ({ categoryName, onSeeMoreClick, onProductClick, onAddProdu
         {/* Removed text overlay */}
       </section>
 
-      <div className="w-full mx-auto"> {/* Adjusted margins */}
+      <div className="w-full mx-auto px-4 md:px-12"> {/* Adjusted margins and added padding */}
+
+        {/* Subcategory Sections */}
+        <h2 className="text-3xl font-bold text-[var(--primary-color)] mb-6 text-center">Explore Subcategories</h2>
         {subcategories.map((sub, index) => (
+          // Pass handleSubcategoryClick to ProductSection for subcategories
           <ProductSection key={index} title={sub} onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
         ))}
       </div>
@@ -2069,6 +2097,7 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
   // State for comments and new comment input
   const [productComments, setProductComments] = useState([]); // Initialize as empty, fetch from Supabase
   const [newCommentText, setNewCommentText] = useState('');
+  const [isImageExpanded, setIsImageExpanded] = useState(false); // New state for image expansion
 
   // State to manage which comments are expanded
   const [expandedComments, setExpandedComments] = useState({});
@@ -2288,8 +2317,18 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
       <div className="w-full mx-auto px-4 md:px-12 py-12 bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)] flex flex-col lg:flex-row items-start lg:space-x-8">
         {/* Product Image */}
         <div className="w-full lg:w-1/2 flex justify-center mb-8 lg:mb-0">
-          <div className="w-80 h-[400px] bg-[var(--main-bg-color)] rounded-lg flex items-center justify-center text-[var(--primary-color)] text-xl"> {/* Adjusted height for 4:5 ratio */}
-            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-lg" onError={(e) => e.target.src = `https://placehold.co/300x450/D3A173/FFFFFF?text=${product.name.replace(/\s/g, '+')}`} />
+          <div
+            className={`bg-[var(--main-bg-color)] rounded-lg flex items-center justify-center text-[var(--primary-color)] text-xl transition-all duration-300 ease-in-out cursor-pointer overflow-hidden ${
+              isImageExpanded ? 'fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center w-screen h-screen' : 'w-80 h-[400px]'
+            }`}
+            onClick={() => { setIsImageExpanded(!isImageExpanded); playSound(clickSoundRef, 'click', soundSettings); }}
+          >
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className={`object-contain rounded-lg ${isImageExpanded ? 'w-[90vw] h-[90vh]' : 'w-full h-full'}`} // Image fits within 90% of viewport
+              onError={(e) => e.target.src = `https://placehold.co/300x450/D3A173/FFFFFF?text=${(product.name || 'Product').replace(/\s/g, '+')}+Image`}
+            />
           </div>
         </div>
 
@@ -3697,6 +3736,7 @@ const App = () => {
               onAddProductToWishlist={handleAddProductToWishlist}
               soundSettings={soundSettings}
               clickSoundRef={clickSoundRef}
+              handleCategoryClick={handleCategoryClick} // <--- ADD THIS LINE
             />
           )}
           {currentPage === 'search' && (
