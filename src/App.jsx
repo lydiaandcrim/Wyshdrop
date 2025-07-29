@@ -187,13 +187,22 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
                   {/* Product image with adjusted height */}
                   <div className="w-48 h-56 bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2"
                     onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }}> {/* Adjusted padding and card size */}
-                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x280/D3A173/FFFFFF?text=${product.name.replace(/\s/g, '+')}`} />
+                    <img
+                      src={product.image_url || `https://placehold.co/240x280/D3A173/FFFFFF?text=No+Image+Available`} // Fallback if image_url is missing
+                      alt={product.name || 'Product Image'}
+                      className="w-full h-full object-cover rounded-md"
+                      onError={(e) => e.target.src = `https://placehold.co/240x280/D3A173/FFFFFF?text=Image+Error`} // Simpler error text
+                    />
                     {/* Price inside the image box */}
                     <p className="absolute bottom-2 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-sm">${product.price}</p>
                   </div>
-                  <h3 className={`font-semibold text-[var(--primary-color)] text-center mb-2 ${product.name.length > 25 ? 'text-base' : 'text-lg'}`}> {/* Dynamically adjust font size */}
-                    {product.name}
-                  </h3> {/* Reduced margin-bottom here */}
+                  {/* Container for the product title to control height and overflow */}
+                  <div className="h-20 flex items-center justify-center overflow-hidden"> {/* Fixed height for title area */}
+                    <h3 className={`font-semibold text-[var(--primary-color)] text-center ${product.name.length > 25 ? 'text-sm' : 'text-base'} line-clamp-3`}> {/* Smaller text, truncate to 3 lines */}
+                      {product.name}
+                    </h3>
+                  </div>
+          {/* Price and Add to Wyshlist button below */}
                   <div className="flex flex-col space-y-3 w-full px-2"> {/* Increased space-y from 2 to 3 */}
                     <button
                       onClick={() => {
@@ -2268,8 +2277,8 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
       {/* Changed to h-0 pb-[33.33%] for responsive aspect ratio, object-contain for image */}
       <section className="w-full h-0 pb-[33.33%] mb-8 rounded-lg shadow-lg border-2 border-[var(--border-color)] relative flex items-center justify-center">
         <img
-          src={`https://placehold.co/1200x400/D3A173/FFFFFF?text=${product.name.replace(/\s/g, '+')}+Banner`} // Dynamic placeholder
-          alt={`${product.name} Banner`}
+          src={`https://placehold.co/1200x400/D3A173/FFFFFF?text=${(product.subcategory || 'Product').replace(/\s/g, '+')}+Banner`} // Use subcategory for banner
+          alt={`${product.subcategory || product.name} Banner`} // Fallback to product name if subcategory is missing
           className="absolute inset-0 w-full h-full object-contain rounded-lg"
           onError={(e) => e.target.src = "https://placehold.co/1200x400/D3A173/FFFFFF?text=Image+Load+Error"}
         />
