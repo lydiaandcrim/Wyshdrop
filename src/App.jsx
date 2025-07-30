@@ -573,18 +573,30 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
       const apiKey = ""; // API key is intentionally left empty for Canvas to provide at runtime.
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
+      console.log("Sending quiz prompt to Gemini API:", prompt);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`Gemini API call failed with status ${response.status}:`, errorBody);
+        setQuizResults(`Failed to generate ideas: ${response.statusText || 'Unknown Error'}. Please try again.`);
+        setIsLoading(false);
+        return; // Exit early on API error
+      }
+
       const result = await response.json();
+      console.log("Gemini API response:", result);
+
       if (result.candidates && result.candidates.length > 0 &&
           result.candidates[0].content && result.candidates[0].content.parts &&
           result.candidates[0].content.parts.length > 0) {
         const text = result.candidates[0].content.parts[0].text;
         setQuizResults(text);
+        console.log("Generated Quiz Results:", text);
 
         // --- SUPABASE INTEGRATION: Save quiz answers to user profile ---
         if (user.id) {
@@ -1015,7 +1027,7 @@ const BookmarksPage = ({ bookmarkedProducts, soundSettings, clickSoundRef }) => 
 };
 
 // Settings Page Component
-const SettingsPage = ({ applyPalette, colorPalettes, isDarkMode, toggleDarkMode, soundSettings, setSoundSettings, clickSoundRef }) => {
+const SettingsPage = ({ applyPalette, colorPalettes, isDarkMode, toggleDarkMode, soundSettings, updateSoundSettings, clickSoundRef }) => {
   const [hexInput, setHexInput] = useState(""); // Initialize with empty string or current primary color
 
   // Update hex input when primary color changes (e.e.g., when switching palettes)
@@ -1040,12 +1052,12 @@ const SettingsPage = ({ applyPalette, colorPalettes, isDarkMode, toggleDarkMode,
   };
 
   const handleSoundToggle = (type) => {
-    // Play click sound for toggle itself, but only if all sounds are enabled or if it's the master toggle being turned on
-    if (soundSettings.isAllSoundEnabled || type === 'all') { // Corrected condition for playing sound on master toggle
+    if (soundSettings.isAllSoundEnabled || type === 'all') {
       playSound(clickSoundRef, 'click', soundSettings);
     }
 
-    setSoundSettings(prev => {
+    // Use updateSoundSettings to ensure persistence
+    updateSoundSettings(prev => { // Pass a function to updateSoundSettings
       if (type === 'all') {
         const newState = !prev.isAllSoundEnabled;
         return {
@@ -1060,7 +1072,6 @@ const SettingsPage = ({ applyPalette, colorPalettes, isDarkMode, toggleDarkMode,
           [type]: !prev[type],
         };
 
-        // Determine if 'all' should be enabled based on individual states
         const anyIndividualEnabled = newIndividualState.isClickSoundEnabled ||
                                      newIndividualState.isScrollSoundEnabled ||
                                      newIndividualState.isPageTransitionSoundEnabled;
@@ -2982,44 +2993,201 @@ const SplashPage = ({ onGetStartedClick, soundSettings, clickSoundRef }) => {
   );
 };
 
-
 // Main App component
 const App = () => {
   console.log("App component is rendering."); // Added for debugging
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState('splash'); // Start with the new splash page
-  const [currentCategory, setCurrentCategory] = useState(''); // To store the clicked category name
-  const [currentSubcategory, setCurrentSubcategory] = useState(''); // To store the clicked subcategory name
-  // --- SUPABASE INTEGRATION: Updated user state to include 'id' and 'profile_image_url' ---
-  const [user, setUser] = useState({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null }); // User state
-  const [hasTakenQuiz, setHasTakenQuiz] = useState(false); // New state for quiz status
-  const [bookmarkedProducts, setBookmarkedProducts] = useState([]); // State for bookmarked products
+  // Initialize currentPage from localStorage or default to 'splash'
+  const [currentPage, setCurrentPage] = useState(localStorage.getItem('lastPage') || 'splash');
+  const [currentCategory, setCurrentCategory] = useState('');
+  const [currentSubcategory, setCurrentSubcategory] = useState('');
+  const [user, setUser] = useState({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
+  const [hasTakenQuiz, setHasTakenQuiz] = useState(false);
+  const [bookmarkedProducts, setBookmarkedProducts] = useState([]);
   const [isGeneralFeedbackModalOpen, setIsGeneralFeedbackModalOpen] = useState(false);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true); // State for header visibility
-  const [lastScrollY, setLastScrollY] = useState(0); // To track scroll position
-  const [selectedProduct, setSelectedProduct] = useState(null); // State to hold the product for detail page
-  const [isCoverPageTransitioningOut, setIsCoverPageTransitioningOut] = useState(false); // New state for cover page animation
-  const [showApiKeyError, setShowApiKeyError] = useState(false); // New state for API key error message
-  const [showQuizModal, setShowQuizModal] = useState(false); // State for Quiz Modal (moved here for global access)
-  const [showQuizPromptModal, setShowQuizPromptModal] = useState(false); // New state for quiz prompt modal
-  const [showWishlistSuccessPopup, setShowWishlistSuccessPopup] = useState(false); // New state for wishlist popup
-  const [wishlistPopupProductName, setWishlistPopupProductName] = useState(''); // Product name for wishlist popup
-  const [showHintModal, setShowHintModal] = useState(false); // New state for Hint Modal
-  // --- SUPABASE INTEGRATION: Gifting contacts will be fetched from DB, initialize as empty ---
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isCoverPageTransitioningOut, setIsCoverPageTransitioningOut] = useState(false);
+  const [showApiKeyError, setShowApiKeyError] = useState(false);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [showQuizPromptModal, setShowQuizPromptModal] = useState(false);
+  const [showWishlistSuccessPopup, setShowWishlistSuccessPopup] = useState(false);
+  const [wishlistPopupProductName, setWishlistPopupProductName] = useState('');
+  const [showHintModal, setShowHintModal] = useState(false);
   const [giftingContacts, setGiftingContacts] = useState([]);
 
-  // Refs for Tone.js players
   const clickSoundRef = useRef(null);
-  const scrollSoundRef = useRef(null); // Still needed for the scroll debounce, even if sound is off
-  const pageTransitionSoundRef = useRef(null); // Still needed, even if sound is off
+  const scrollSoundRef = useRef(null);
+  const pageTransitionSoundRef = useRef(null);
 
-  // Sound settings state
-  const [soundSettings, setSoundSettings] = useState({
-    isAllSoundEnabled: true,
-    isClickSoundEnabled: true,
-    isScrollSoundEnabled: false, // Changed to false
-    isPageTransitionSoundEnabled: false, // Changed to false
+  // Initialize sound settings from localStorage or default
+  const [soundSettings, setSoundSettings] = useState(() => {
+    try {
+      const savedSettings = localStorage.getItem('soundSettings');
+      return savedSettings ? JSON.parse(savedSettings) : {
+        isAllSoundEnabled: true,
+        isClickSoundEnabled: true,
+        isScrollSoundEnabled: false,
+        isPageTransitionSoundEnabled: false,
+      };
+    } catch (error) {
+      console.error("Error parsing sound settings from localStorage:", error);
+      return { // Default fallback
+        isAllSoundEnabled: true,
+        isClickSoundEnabled: true,
+        isScrollSoundEnabled: false,
+        isPageTransitionSoundEnabled: false,
+      };
+    }
   });
+  useEffect(() => {
+    // Declare authListener here so it's accessible in the cleanup function.
+    // It will hold the subscription object from Supabase.
+    let authListener = null;
+
+    // --- STEP 1: Set up the *ongoing* authentication state change listener immediately ---
+    // This ensures authListener gets its value right when the effect runs,
+    // regardless of whether getSession() has completed or not.
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth event:", event, "Session:", session);
+        if (session) {
+          const userEmail = session.user.email;
+          const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
+          const userId = session.user.id;
+
+          // Try to fetch existing profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+          if (profileError && profileError.code === 'PGRST116') { // No rows found (profile doesn't exist)
+            console.log("Profile not found, creating new profile...");
+            // Create new profile
+            const { data: newProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert([
+                {
+                  id: userId,
+                  username: userName,
+                  first_name: session.user.user_metadata?.first_name || null,
+                  last_name: session.user.user_metadata?.last_name || null,
+                  email: userEmail,
+                  profile_image_url: session.user.user_metadata?.avatar_url || null,
+                  has_taken_quiz: false,
+                  quiz_answers: {},
+                  sound_settings: { // Default sound settings for new user
+                    isAllSoundEnabled: true,
+                    isClickSoundEnabled: true,
+                    isScrollSoundEnabled: false,
+                    isPageTransitionSoundEnabled: false,
+                  },
+                  is_dark_mode: false, // Default dark mode for new user
+                }
+              ])
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error('Error creating profile:', insertError);
+            } else {
+              console.log("New profile created:", newProfile);
+              setUser({
+                isLoggedIn: true,
+                username: newProfile.username,
+                email: newProfile.email,
+                id: newProfile.id,
+                profile_image_url: newProfile.profile_image_url
+              });
+              setHasTakenQuiz(newProfile.has_taken_quiz);
+              await fetchUserSpecificData(newProfile.id); // Fetch other user-specific data
+              setCurrentPage('home');
+            }
+          } else if (profileError) {
+            console.error('Error fetching profile:', profileError);
+          } else if (profile) {
+            // Profile exists, set user state
+            setUser({
+              isLoggedIn: true,
+              username: profile.username,
+              email: profile.email,
+              id: profile.id,
+              profile_image_url: profile.profile_image_url
+            });
+            setHasTakenQuiz(profile.has_taken_quiz);
+            await fetchUserSpecificData(profile.id); // Fetch other user-specific data
+            setCurrentPage('home');
+          }
+        } else {
+          // No session or signed out
+          setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
+          setHasTakenQuiz(false);
+          setBookmarkedProducts([]);
+          setGiftingContacts([]);
+          setCurrentPage('splash'); // Redirect to splash if no session
+        }
+        setIsCoverPageTransitioningOut(false); // Reset transition state after auth check
+      }
+    );
+    authListener = listener; // Assign the listener to the outer variable immediately
+
+    // --- STEP 2: Perform an *initial* session check on mount ---
+    // This is in case onAuthStateChange doesn't fire immediately on page load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const userEmail = session.user.email;
+        const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
+        const userId = session.user.id;
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (profileError && profileError.code === 'PGRST116') {
+            console.log("Initial session check: Profile not found, will be created on next auth event.");
+            // Don't create here, let onAuthStateChange handle it after signup/login
+        } else if (profile) {
+            setUser({
+                isLoggedIn: true,
+                username: profile.username,
+                email: profile.email,
+                id: profile.id,
+                profile_image_url: profile.profile_image_url
+            });
+            setHasTakenQuiz(profile.has_taken_quiz);
+            await fetchUserSpecificData(profile.id);
+            setCurrentPage('home');
+        }
+      } else {
+        setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
+        setCurrentPage('splash');
+      }
+      setIsCoverPageTransitioningOut(false);
+    }).catch(error => {
+      console.error("Error getting initial Supabase session:", error.message);
+      setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
+      setCurrentPage('splash');
+      setShowApiKeyError(true);
+      setIsCoverPageTransitioningOut(false);
+    });
+
+    // --- STEP 3: Cleanup function ---
+    // This will run when the component unmounts.
+    return () => {
+      // Only try to unsubscribe if authListener was successfully assigned a value
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+
+  // Initialize dark mode from localStorage or default
+  // Removed duplicate isDarkMode state declaration to fix redeclaration error
 
   // Effect to load Tone.js and initialize players
   useEffect(() => {
@@ -3060,6 +3228,7 @@ const App = () => {
         }).toDestination();
       }
     };
+    
     script.onerror = (e) => console.error("Error loading Tone.js via CDN:", e);
     document.body.appendChild(script);
 
@@ -3084,6 +3253,40 @@ const App = () => {
   const [currentFooterBgColor, setCurrentFooterBgColor] = useState("#9A6E45");
 
   const [isDarkMode, setIsDarkMode] = useState(false);
+  // Function to apply a selected color palette
+  const applyPalette = useCallback((palette) => {
+    const mode = isDarkMode ? 'dark' : 'light';
+    const colors = palette[mode];
+
+    document.documentElement.style.setProperty('--main-bg-color', colors.mainBg);
+    document.documentElement.style.setProperty('--primary-color', colors.primary);
+    document.documentElement.style.setProperty('--border-color', colors.border);
+    document.documentElement.style.setProperty('--box-bg-color', colors.boxBg);
+    document.documentElement.style.setProperty('--button-bg-color', colors.buttonBg);
+    document.documentElement.style.setProperty('--footer-bg-color', colors.footerBg);
+
+    // Update the current color states in App component
+    setCurrentMainBgColor(colors.mainBg);
+    setCurrentPrimaryColor(colors.primary);
+    setCurrentBorderColor(colors.border);
+    setCurrentBoxBgColor(colors.boxBg);
+    setCurrentButtonBgColor(colors.buttonBg);
+    setCurrentFooterBgColor(colors.footerBg);
+  }, [isDarkMode]); // Recreate if dark mode changes
+
+  // Effect to apply initial palette based on dark mode and saved preference
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('isDarkMode');
+    const initialDarkMode = savedDarkMode ? JSON.parse(savedDarkMode) : false;
+    setIsDarkMode(initialDarkMode); // Set initial dark mode state
+
+    // Find the default palette or the one that matches current colors
+    const currentPaletteData = colorPalettes.find(p =>
+      (p.light.mainBg === currentMainBgColor && !initialDarkMode) || (p.dark.mainBg === currentMainBgColor && initialDarkMode)
+    ) || colorPalettes[0]; // Fallback to first palette if no match
+
+    applyPalette(currentPaletteData); // Apply the initial palette
+  }, [applyPalette]); // Dependency on applyPalette to ensure it's stable
 
   // Define color palettes with both light and dark modes
   const colorPalettes = [
@@ -3109,58 +3312,52 @@ const App = () => {
     },
   ];
 
-  // Function to apply a palette (either light or dark version based on current mode)
-  const applyPalette = (palette) => {
-    const selectedColors = isDarkMode ? palette.dark : palette.light;
-    setCurrentMainBgColor(selectedColors.mainBg);
-    setCurrentPrimaryColor(selectedColors.primary);
-    setCurrentBorderColor(selectedColors.border);
-    setCurrentBoxBgColor(selectedColors.boxBg);
-    setCurrentButtonBgColor(selectedColors.buttonBg);
-    setCurrentFooterBgColor(selectedColors.footerBg);
-  };
-
-  // Initial application of default palette on mount
-  useEffect(() => {
-    applyPalette(colorPalettes[0]);
-  }, []);
-
-  // Update CSS variables whenever current colors or dark mode changes
-  useEffect(() => {
-    document.documentElement.style.setProperty('--main-bg-color', currentMainBgColor);
-    document.documentElement.style.setProperty('--primary-color', currentPrimaryColor);
-    document.documentElement.style.setProperty('--border-color', currentBorderColor);
-    document.documentElement.style.setProperty('--box-bg-color', currentBoxBgColor);
-    document.documentElement.style.setProperty('--button-bg-color', currentButtonBgColor);
-    document.documentElement.style.setProperty('--footer-bg-color', currentFooterBgColor);
-    document.documentElement.style.setProperty('--text-color', isDarkMode ? '#FFFFFF' : currentPrimaryColor); // Text color logic
-  }, [currentMainBgColor, currentPrimaryColor, currentBorderColor, currentBoxBgColor, currentButtonBgColor, currentFooterBgColor, isDarkMode]);
-
-  const toggleDarkMode = () => {
+  const toggleDarkMode = async () => { // Made async to await Supabase update
     setIsDarkMode(prevMode => {
       const newMode = !prevMode;
-      // Find the current palette based on its light or dark colors
       const currentPaletteData = colorPalettes.find(p =>
         (p.light.mainBg === currentMainBgColor && !prevMode) || (p.dark.mainBg === currentMainBgColor && prevMode)
-      ) || colorPalettes[0]; // Fallback to default if not found
+      ) || colorPalettes[0];
 
-      if (newMode) { // Switching to dark mode
-        setCurrentMainBgColor(currentPaletteData.dark.mainBg);
-        setCurrentPrimaryColor(currentPaletteData.dark.primary);
-        setCurrentBorderColor(currentPaletteData.dark.border);
-        setCurrentBoxBgColor(currentPaletteData.dark.boxBg);
-        setCurrentButtonBgColor(currentPaletteData.dark.buttonBg);
-        setCurrentFooterBgColor(currentPaletteData.dark.footerBg);
-      } else { // Switching to light mode
-        setCurrentMainBgColor(currentPaletteData.light.mainBg);
-        setCurrentPrimaryColor(currentPaletteData.light.primary);
-        setCurrentBorderColor(currentPaletteData.light.border);
-        setCurrentBoxBgColor(currentPaletteData.light.boxBg);
-        setCurrentButtonBgColor(currentPaletteData.light.buttonBg);
-        setCurrentFooterBgColor(currentPaletteData.light.footerBg);
+      const selectedColors = newMode ? currentPaletteData.dark : currentPaletteData.light;
+      setCurrentMainBgColor(selectedColors.mainBg);
+      setCurrentPrimaryColor(selectedColors.primary);
+      setCurrentBorderColor(selectedColors.border);
+      setCurrentBoxBgColor(selectedColors.boxBg);
+      setCurrentButtonBgColor(selectedColors.buttonBg);
+      setCurrentFooterBgColor(selectedColors.footerBg);
+
+      // Save to localStorage
+      localStorage.setItem('isDarkMode', JSON.stringify(newMode));
+
+      // Save to Supabase profile if logged in
+      if (user.isLoggedIn && user.id) {
+        supabase.from('profiles')
+          .update({ is_dark_mode: newMode, updated_at: new Date().toISOString() })
+          .eq('id', user.id)
+          .then(({ error }) => {
+            if (error) console.error('Error updating dark mode in profile:', error);
+            else console.log('Dark mode preference saved to profile.');
+          });
       }
       return newMode;
     });
+  };
+
+  // Modify setSoundSettings to save to Supabase and localStorage
+  const updateSoundSettings = async (newSettings) => { // Renamed for clarity
+    setSoundSettings(newSettings);
+    // Save to localStorage
+    localStorage.setItem('soundSettings', JSON.stringify(newSettings));
+
+    // Save to Supabase profile if logged in
+    if (user.isLoggedIn && user.id) {
+      const { error } = await supabase.from('profiles')
+        .update({ sound_settings: newSettings, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      if (error) console.error('Error updating sound settings in profile:', error);
+      else console.log('Sound settings saved to profile.');
+    }
   };
 
   const toggleSidebar = () => {
@@ -3332,18 +3529,52 @@ const App = () => {
 
   // --- SUPABASE INTEGRATION: Helper function to fetch user-specific data ---
   const fetchUserSpecificData = async (userId) => {
-      if (!userId) return; // Only fetch if user is logged in
+      if (!userId) return;
+
+      // Fetch Profile (for quiz status, settings, etc.)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching user profile data:', profileError);
+      } else if (profile) {
+        setUser(prev => ({
+          ...prev,
+          username: profile.username,
+          email: profile.email,
+          profile_image_url: profile.profile_image_url,
+          id: profile.id, // Ensure ID is set
+          isLoggedIn: true, // Confirm logged in
+        }));
+        setHasTakenQuiz(profile.has_taken_quiz);
+        // Apply fetched sound settings, with a fallback
+        setSoundSettings(profile.sound_settings || {
+          isAllSoundEnabled: true,
+          isClickSoundEnabled: true,
+          isScrollSoundEnabled: false,
+          isPageTransitionSoundEnabled: false,
+        });
+        // Apply fetched dark mode
+        setIsDarkMode(profile.is_dark_mode || false);
+        // Apply palette based on fetched dark mode
+        const currentPaletteData = colorPalettes.find(p =>
+          (p.light.mainBg === currentMainBgColor && !profile.is_dark_mode) || (p.dark.mainBg === currentMainBgColor && profile.is_dark_mode)
+        ) || colorPalettes[0];
+        applyPalette(currentPaletteData);
+      }
 
       // Fetch Wishlist
       const { data: wishlistData, error: wishlistError } = await supabase
         .from('wishlists')
-        .select('product_id, products(*)') // Select product details via join
+        .select('product_id, products(*)')
         .eq('user_id', userId);
 
       if (wishlistError) {
         console.error('Error fetching wishlist:', wishlistError);
       } else {
-        // Supabase returns nested data for the join, flatten it for your state
         setBookmarkedProducts(wishlistData.map(item => item.products));
       }
 
@@ -3360,135 +3591,51 @@ const App = () => {
       }
   };
 
+   useEffect(() => {
+  // Initial check for session when the app loads
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (session) {
+      const userEmail = session.user.email;
+      const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
+      const userId = session.user.id;
 
-  // --- SUPABASE INTEGRATION: Auth Listener and Initial Session Check ---
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session) {
-          const userEmail = session.user.email;
-          const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
-          const userId = session.user.id;
-      console.log('Auth event received:', event);
-      console.log('Session received:', session);
+      // Fetch profile on initial session check
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-          // 1. Fetch/Create User Profile in 'profiles' table
-          let { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single(); // Use .single() as it's a one-to-one relationship
-
-          if (profileError && profileError.code === 'PGRST116') { // No rows found (profile doesn't exist)
-            console.log("Profile not found, creating new profile...");
-            const { data: newProfile, error: insertError } = await supabase
-              .from('profiles')
-              .insert([
-                {
-                  id: userId,
-                  username: userName,
-                  first_name: session.user.user_metadata?.first_name || null,
-                  last_name: session.user.user_metadata?.last_name || null,
-                  email: userEmail,
-                  profile_image_url: session.user.user_metadata?.avatar_url || null, // Use avatar from social login if available
-                  has_taken_quiz: false, // Default to false for new users
-                  quiz_answers: {}
-                }
-              ])
-              .select()
-              .single();
-
-            if (insertError) {
-              console.error('Error creating profile:', insertError);
-              // Handle error, maybe sign out or show a message
-            } else {
-              profile = newProfile; // Use the newly created profile
-              console.log("New profile created:", profile);
-            }
-          } else if (profileError) {
-            console.error('Error fetching profile:', profileError);
-            // Handle other profile fetch errors
-          }
-
-          // Update user state with profile data
-          setUser({
-            isLoggedIn: true,
-            username: profile?.username || userName,
-            email: profile?.email || userEmail,
-            id: userId, // Store the Supabase user ID
-            profile_image_url: profile?.profile_image_url || session.user.user_metadata?.avatar_url || null
-          });
-          setHasTakenQuiz(profile?.has_taken_quiz || false); // Update quiz status from profile
-
-          // 2. Fetch user-specific data (wishlist, contacts)
-          await fetchUserSpecificData(userId);
-
-          setCurrentPage('home'); // Navigate to home after successful login
-          setShowApiKeyError(false); // Clear any API key errors
-        } else {
-          // User is logged out
-          setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-          setHasTakenQuiz(false);
-          setBookmarkedProducts([]); // Clear data on logout
-          setGiftingContacts([]); // Clear data on logout
-          // Only redirect to cover if not already on it (to prevent infinite loops)
-          if (currentPage !== 'cover' && currentPage !== 'create-account' && currentPage !== 'splash') {
-            setCurrentPage('cover');
-          }
-        }
-        setIsCoverPageTransitioningOut(false); // Ensure transition state is reset after auth check
+      if (profileError) {
+        console.error('Error fetching profile on initial session:', profileError);
+        // If profile doesn't exist on initial load, it will be created on next auth change
       }
-    );
 
-    // Initial check for session when the app loads
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        const userEmail = session.user.email;
-        const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
-        const userId = session.user.id;
+      setUser({
+        isLoggedIn: true,
+        username: profile?.username || userName,
+        email: profile?.email || userEmail,
+        id: userId,
+        profile_image_url: profile?.profile_image_url || session.user.user_metadata?.avatar_url || null
+      });
+      setHasTakenQuiz(profile?.has_taken_quiz || false);
 
-        // Fetch profile on initial session check
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (profileError) {
-            console.error('Error fetching profile on initial session:', profileError);
-            // If profile doesn't exist on initial load, it will be created on next auth change
-        }
-
-        setUser({
-          isLoggedIn: true,
-          username: profile?.username || userName,
-          email: profile?.email || userEmail,
-          id: userId,
-          profile_image_url: profile?.profile_image_url || session.user.user_metadata?.avatar_url || null
-        });
-        setHasTakenQuiz(profile?.has_taken_quiz || false);
-
-        await fetchUserSpecificData(userId); // Fetch user-specific data
-        setCurrentPage('home');
-      } else {
-        setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-        setCurrentPage('splash'); // Keep on splash if no session
-      }
-      setIsCoverPageTransitioningOut(false); // Reset transition state after initial session check
-    }).catch(error => {
-      console.error("Error getting initial Supabase session:", error.message);
-      // If there's an error getting session, assume not logged in and show cover page
+      await fetchUserSpecificData(userId); // Fetch user-specific data
+      setCurrentPage('home');
+    } else {
       setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-      setCurrentPage('splash'); // Keep on splash if API key error
-      setShowApiKeyError(true); // Indicate a potential Supabase config issue
-      setIsCoverPageTransitioningOut(false);
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []); // Empty dependency array to run once on mount
-
+      setCurrentPage('splash'); // Keep on splash if no session
+    }
+    setIsCoverPageTransitioningOut(false); // Reset transition state after initial session check
+  }).catch(error => {
+    console.error("Error getting initial Supabase session:", error.message);
+    // If there's an error getting session, assume not logged in and show cover page
+    setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
+    setCurrentPage('splash'); // Keep on splash if API key error
+    setShowApiKeyError(true); // Indicate a potential Supabase config issue
+    setIsCoverPageTransitioningOut(false);
+  });
+}, []); // Empty dependency array to run once on mount
 
   // Handle guest sign-in (no change needed for Supabase as it's not a direct auth method)
   const handleGuestSignIn = () => {
@@ -3760,7 +3907,7 @@ const App = () => {
               isDarkMode={isDarkMode}
               toggleDarkMode={toggleDarkMode}
               soundSettings={soundSettings} // Pass sound settings
-              setSoundSettings={setSoundSettings} // Pass setter for sound settings
+              updateSoundSettings={updateSoundSettings} // <--- CHANGE THIS LINE
               clickSoundRef={clickSoundRef}
             />
           )}
