@@ -1154,7 +1154,7 @@ const SettingsPage = ({ applyPalette, colorPalettes, isDarkMode, toggleDarkMode,
               <button
                 key={palette.name}
                 className="flex flex-col items-center p-2 rounded-lg border-2 border-[var(--border-color)] hover:border-[var(--primary-color)] transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-                onClick={() => { applyPalette(palette); playSound(clickSoundRef, 'click', soundSettings); }}
+                onClick={() => { applyPalette(palette, isDarkMode); playSound(clickSoundRef, 'click', soundSettings); }} // <--- CHANGED: Pass isDarkMode
               >
                 <div className="w-full h-12 rounded-md mb-2" style={{ backgroundColor: isDarkMode ? palette.dark.mainBg : palette.light.mainBg, border: `1px solid ${isDarkMode ? palette.dark.border : palette.light.border}` }}></div>
                 <span className="text-sm font-medium text-[var(--primary-color)]">{palette.name}</span>
@@ -3085,7 +3085,9 @@ const App = () => {
                     isScrollSoundEnabled: false,
                     isPageTransitionSoundEnabled: false,
                   },
+                  // ... (existing profile fields) ...
                   is_dark_mode: false, // Default dark mode for new user
+                  saved_palette_name: colorPalettes[0].name, // <--- NEW: Default saved palette name // Default dark mode for new user
                 }
               ])
               .select()
@@ -3254,25 +3256,39 @@ const App = () => {
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   // Function to apply a selected color palette
-  const applyPalette = useCallback((palette) => {
-    const mode = isDarkMode ? 'dark' : 'light';
-    const colors = palette[mode];
+  const applyPalette = useCallback((palette, currentDarkModeState) => { // <--- CHANGED: Added currentDarkModeState parameter
+  const mode = currentDarkModeState ? 'dark' : 'light'; // <--- CHANGED: Use currentDarkModeState
+  const colors = palette[mode];
 
-    document.documentElement.style.setProperty('--main-bg-color', colors.mainBg);
-    document.documentElement.style.setProperty('--primary-color', colors.primary);
-    document.documentElement.style.setProperty('--border-color', colors.border);
-    document.documentElement.style.setProperty('--box-bg-color', colors.boxBg);
-    document.documentElement.style.setProperty('--button-bg-color', colors.buttonBg);
-    document.documentElement.style.setProperty('--footer-bg-color', colors.footerBg);
+  document.documentElement.style.setProperty('--main-bg-color', colors.mainBg);
+  document.documentElement.style.setProperty('--primary-color', colors.primary);
+  document.documentElement.style.setProperty('--border-color', colors.border);
+  document.documentElement.style.setProperty('--box-bg-color', colors.boxBg);
+  document.documentElement.style.setProperty('--button-bg-color', colors.buttonBg);
+  document.documentElement.style.setProperty('--footer-bg-color', colors.footerBg);
 
-    // Update the current color states in App component
-    setCurrentMainBgColor(colors.mainBg);
-    setCurrentPrimaryColor(colors.primary);
-    setCurrentBorderColor(colors.border);
-    setCurrentBoxBgColor(colors.boxBg);
-    setCurrentButtonBgColor(colors.buttonBg);
-    setCurrentFooterBgColor(colors.footerBg);
-  }, [isDarkMode]); // Recreate if dark mode changes
+  // Update the current color states in App component
+  setCurrentMainBgColor(colors.mainBg);
+  setCurrentPrimaryColor(colors.primary);
+  setCurrentBorderColor(colors.border);
+  setCurrentBoxBgColor(colors.boxBg);
+  setCurrentButtonBgColor(colors.buttonBg);
+  setCurrentFooterBgColor(colors.footerBg);
+
+  // --- NEW: Save selected palette name to localStorage ---
+  localStorage.setItem('selectedPaletteName', palette.name);
+
+  // --- NEW: Save selected palette name to Supabase profile if logged in ---
+  if (user.isLoggedIn && user.id) {
+    supabase.from('profiles')
+      .update({ saved_palette_name: palette.name, updated_at: new Date().toISOString() })
+      .eq('id', user.id)
+      .then(({ error }) => {
+        if (error) console.error('Error updating saved palette name in profile:', error);
+        else console.log('Saved palette name preference saved to profile.');
+      });
+  }
+}, [user]); // <--- CHANGED: Removed isDarkMode from dependency. Keep user.
 
   // Effect to apply initial palette based on dark mode and saved preference
   useEffect(() => {
@@ -3327,7 +3343,10 @@ const App = () => {
       setCurrentButtonBgColor(selectedColors.buttonBg);
       setCurrentFooterBgColor(selectedColors.footerBg);
 
-      // Save to localStorage
+// Call applyPalette with the new mode
+      applyPalette(currentPaletteData, newMode); // <--- NEW: Pass newMode here
+
+// Save to localStorage
       localStorage.setItem('isDarkMode', JSON.stringify(newMode));
 
       // Save to Supabase profile if logged in
@@ -3534,7 +3553,7 @@ const App = () => {
       // Fetch Profile (for quiz status, settings, etc.)
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, saved_palette_name') // <--- CHANGED: Select saved_palette_name
         .eq('id', userId)
         .single();
 
@@ -3560,10 +3579,17 @@ const App = () => {
         // Apply fetched dark mode
         setIsDarkMode(profile.is_dark_mode || false);
         // Apply palette based on fetched dark mode
-        const currentPaletteData = colorPalettes.find(p =>
-          (p.light.mainBg === currentMainBgColor && !profile.is_dark_mode) || (p.dark.mainBg === currentMainBgColor && profile.is_dark_mode)
-        ) || colorPalettes[0];
-        applyPalette(currentPaletteData);
+        // Set isDarkMode state FIRST
+        const fetchedDarkMode = profile.is_dark_mode || false;
+        setIsDarkMode(fetchedDarkMode);
+
+// Find the palette based on fetched name or localStorage fallback
+        const savedPaletteName = profile.saved_palette_name || localStorage.getItem('selectedPaletteName');
+        const selectedPalette = colorPalettes.find(p => p.name === savedPaletteName);
+        const paletteToApply = selectedPalette || colorPalettes[0]; // Fallback to default
+
+// Apply palette using the fetched dark mode state
+        applyPalette(paletteToApply, fetchedDarkMode); // <--- CHANGED: Pass fetchedDarkMode here
       }
 
       // Fetch Wishlist
