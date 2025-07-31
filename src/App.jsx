@@ -805,11 +805,17 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
 };
 
 // Search Page Component
-const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAddProductToWishlist, onQuizMeClick, soundSettings, clickSoundRef }) => { // Added onProductClick prop
+const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAddProductToWishlist, onQuizMeClick, soundSettings, clickSoundRef}) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState(null);
   const [selectedBudget, setSelectedBudget] = useState('All'); // New state for budget filter
+  
 
   const categoriesData = [ // Renamed to avoid conflict with `categories` variable
     { name: "Trending", icon: "fas fa-fire", subcategories: ["What's Hot Now", "Viral Picks", "New Arrivals", "TikTok Trends", "Limited Editions"] },
@@ -833,21 +839,160 @@ const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAdd
     // In a real app, you would trigger a product search/filter here
     console.log("Filtering by budget:", budget);
   };
+  // Debounce search term for main product search
+  // Debounce search term for main product search
+  useEffect(() => {
+    const delaySearch = setTimeout(async () => {
+      if (searchTerm.trim() === '') {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
 
+      setIsSearching(true);
+      let query = supabase
+        .from('products')
+        .select('*')
+        .ilike('name', `%${searchTerm.trim()}%`);
+
+      // Apply budget filter to main search results
+      if (selectedBudget === 'Under $25') {
+        query = query.lte('price', 25);
+      } else if (selectedBudget === '$25 - $50') {
+        query = query.gte('price', 25).lte('price', 50);
+      } else if (selectedBudget === '$50 - $100') {
+        query = query.gte('price', 50).lte('price', 100);
+      } else if (selectedBudget === 'Over $100') {
+        query = query.gte('price', 100);
+      }
+
+      query = query.limit(50); // Limit results for performance
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching search results:', error);
+        setSearchResults([]);
+      } else {
+        setSearchResults(data);
+      }
+      setIsSearching(false);
+    }, 500); // 500ms debounce for main search
+
+    return () => clearTimeout(delaySearch);
+  }, [searchTerm, selectedBudget]); // <--- CHANGED: Add selectedBudget to dependencies
+
+  // Debounce search term for suggestions
+  // Debounce search term for suggestions
+  useEffect(() => {
+    const delaySuggestions = setTimeout(async () => {
+      if (searchTerm.trim() === '') {
+        setSuggestions([]);
+        setIsSuggesting(false);
+        return;
+      }
+
+      setIsSuggesting(true);
+
+      let query = supabase
+        .from('products')
+        .select('name, price') // <--- CHANGED: Select price as well for filtering
+        .ilike('name', `%${searchTerm.trim()}%`);
+
+      // Apply budget filter
+      if (selectedBudget === 'Under $25') {
+        query = query.lte('price', 25);
+      } else if (selectedBudget === '$25 - $50') {
+        query = query.gte('price', 25).lte('price', 50);
+      } else if (selectedBudget === '$50 - $100') {
+        query = query.gte('price', 50).lte('price', 100);
+      } else if (selectedBudget === 'Over $100') {
+        query = query.gte('price', 100);
+      }
+
+      query = query.limit(15); // Limit to 15 suggestions
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching suggestions:', error);
+        setSuggestions([]);
+      } else {
+        // Filter suggestions by word count (max 4 words) and map to names
+        // Ensure data contains 'name' and 'price' as we selected them
+        const filteredSuggestions = data
+          .filter(p => p.name && p.name.split(' ').length <= 10) // Filter by word count
+          .map(p => p.name); // Map to just the name for suggestions
+        setSuggestions(filteredSuggestions);
+      }
+      setIsSuggesting(false);
+    }, 200); // 200ms debounce for suggestions
+
+    return () => clearTimeout(delaySuggestions);
+  }, [searchTerm, selectedBudget]); // Keep selectedBudget in dependencies // <--- CHANGED: Add selectedBudget to dependencies
+  const handleSearch = () => {
+    // The useEffect already handles the search based on searchTerm,
+    // but this function can be used for an explicit search button click if needed.
+    // For now, it just ensures suggestions are hidden.
+    setShowSuggestions(false);
+    playSound(clickSoundRef, 'click', soundSettings);
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setSearchTerm(suggestion);
+    setShowSuggestions(false);
+    // Trigger a direct search with the selected suggestion
+    // The useEffect for main search will pick this up due to setSearchTerm
+    playSound(clickSoundRef, 'click', soundSettings);
+  };
 
   return (
     <div className="flex-grow w-full py-4 pt-[130px]"> {/* Adjusted padding top for fixed header and nav bar */}
       {/* Search Input Field and Categories Dropdown */}
       <section className="w-full mx-auto px-4 md:px-12 mb-8 mt-4 flex items-center"> {/* Adjusted padding */}
         <div className="relative flex-grow"> {/* flex-grow to make input take available space */}
-          <input
-            type="text"
-            placeholder="Search WyshDrop..."
-            className="w-full p-3 pl-10 rounded-lg shadow-md border-2 border-[var(--border-color)] bg-[var(--box-bg-color)] text-[var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--primary-color)]"></i>
+          <div className="relative flex-grow"> {/* flex-grow to make input take available space */}
+            <input
+              type="text"
+              placeholder="Search WyshDrop..."
+              className="w-full p-3 pl-10 rounded-lg shadow-md border-2 border-[var(--border-color)] bg-[var(--box-bg-color)] text-[var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setShowSuggestions(true); // Show suggestions when typing
+              }}
+              onFocus={() => setShowSuggestions(true)} // Show on focus
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 100)} // Hide after a short delay to allow click
+              onKeyDown={(e) => { // Handle Enter key to perform search
+                if (e.key === 'Enter') {
+                  handleSearch();
+                }
+              }}
+            />
+            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--primary-color)]"></i>
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && (searchTerm.trim() !== '' || isSuggesting) && (
+              <div className="absolute left-0 right-0 mt-1 bg-[var(--box-bg-color)] rounded-lg shadow-lg border border-[var(--border-color)] z-10 max-h-60 overflow-y-auto custom-scrollbar">
+                {isSuggesting ? (
+                  <div className="p-3 text-center text-[var(--primary-color)]">Loading suggestions...</div>
+                ) : suggestions.length > 0 ? (
+                  suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      className="w-full text-left px-4 py-2 text-[var(--primary-color)] hover:bg-gray-100 transition-colors duration-100"
+                      onMouseDown={(e) => e.preventDefault()} // Prevent blur from hiding dropdown before click
+                      onClick={() => handleSuggestionClick(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-3 text-center text-gray-500">No suggestions found.</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Categories Dropdown Button (for top-level categories) */}
@@ -914,7 +1059,55 @@ const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAdd
           ))}
         </div>
       </section>
+      {/* Search Results Section */}
+      <section className="w-full mx-auto px-4 md:px-12 mb-8">
+        <h3 className="text-xl font-semibold text-[var(--primary-color)] mb-3">
+          {searchTerm.trim() === '' ? 'Popular / Most Searched Items' : `Results for "${searchTerm}"`}
+        </h3>
+        {isSearching ? (
+          <div className="text-center text-xl text-[var(--primary-color)] py-12">
+            <i className="fas fa-spinner fa-spin mr-2"></i> Searching for products...
+          </div>
+        ) : searchResults.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {searchResults.map((product) => (
+              <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
+                onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }}>
+                <div className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2">
+                  <img src={product.image_url || `https://placehold.co/240x360/D3A173/FFFFFF?text=No+Image+Available`} alt={product.name || 'Product Image'} className="absolute inset-0 w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x360/D3A173/FFFFFF?text=Image+Load+Error`} />
+                  <p className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-xs">${product.price}</p>
+                </div>
+                <h3 className="text-base font-semibold text-[var(--primary-color)] text-center mb-1 line-clamp-2">{product.name}</h3>
+                <div className="flex flex-col space-y-2 w-full px-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAddProductToWishlist(product); playSound(clickSoundRef, 'click', soundSettings); }}
+                    className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full">
+                    Add to Wyshlist
+                  </button>
+                  <a
+                    href={product.amazon_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => { e.stopPropagation(); playSound(clickSoundRef, 'click', soundSettings); }}
+                    className="px-3 py-1.5 text-sm bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 text-center w-full"
+                  >
+                    Go Buy <i className="fas fa-external-link-alt ml-1"></i>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-xl text-[var(--primary-color)] py-12">No products found for your search.</div>
+        )}
+      </section>
 
+      {/* Remove the old "Popular/Most Searched Items Carousel" if searchTerm is not empty, otherwise keep it */}
+      {searchTerm.trim() === '' && (
+        <div className="w-full mx-auto">
+          <ProductSection title="Popular / Most Searched Items" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+        </div>
+      )}
       {/* Popular/Most Searched Items Carousel */}
       <div className="w-full mx-auto"> {/* Adjusted margins */}
         <ProductSection title="Popular / Most Searched Items" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
@@ -3016,6 +3209,7 @@ const App = () => {
   const [wishlistPopupProductName, setWishlistPopupProductName] = useState('');
   const [showHintModal, setShowHintModal] = useState(false);
   const [giftingContacts, setGiftingContacts] = useState([]);
+  const [selectedBudget, setSelectedBudget] = useState('All'); // New state for budget filter
 
   const clickSoundRef = useRef(null);
   const scrollSoundRef = useRef(null);
@@ -3921,6 +4115,8 @@ const App = () => {
               onQuizMeClick={() => setShowQuizModal(true)} // Pass quiz me handler
               soundSettings={soundSettings}
               clickSoundRef={clickSoundRef}
+              selectedBudget={selectedBudget} // <--- NEW PROP
+              setSelectedBudget={setSelectedBudget} // <--- NEW PROP
             />
           )}
           {currentPage === 'bookmarks' && (
