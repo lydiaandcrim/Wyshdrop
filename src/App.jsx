@@ -1424,8 +1424,7 @@ const FeedbackModal = ({ isOpen, onClose, onSubmit, onSkip, purpose, soundSettin
 };
 
 // Profile Page Component
-const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGiftingContacts, soundSettings, clickSoundRef, onProductClick, onAddProductToWishlist }) => {
-  const [profileImage, setProfileImage] = useState(user.profile_image_url || "https://placehold.co/150x150/D3A173/FFFFFF?text=PFP");
+const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGiftingContacts, soundSettings, clickSoundRef, onProductClick, onAddProductToWishlist, onSignInClick }) => {  const [profileImage, setProfileImage] = useState(user.profile_image_url || "https://placehold.co/150x150/D3A173/FFFFFF?text=PFP");
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [newContactName, setNewContactName] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
@@ -1635,7 +1634,7 @@ const ProfilePage = ({ user, onSignOut, onAboutUsClick, giftingContacts, setGift
             <p className="text-lg text-[var(--primary-color)]">Please sign in to view your profile details.</p>
             {/* These buttons will be handled by the parent App component's routing */}
             <button
-              onClick={() => { onSignOut(); playSound(clickSoundRef, 'click', soundSettings); }} // Re-use onSignOut for redirecting to cover/sign-in
+              onClick={() => { onSignInClick(); playSound(clickSoundRef, 'click', soundSettings); }}
               className="w-full px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
             >
               Sign In
@@ -4144,6 +4143,7 @@ const App = () => {
               onAddProductToWishlist={handleAddProductToWishlist} // Pass add to wishlist handler
               soundSettings={soundSettings}
               clickSoundRef={clickSoundRef}
+              onSignInClick={() => setCurrentPage('cover')} // ADD THIS LINE: Pass a handler to go to the cover page
             />
           )}
           {currentPage === 'how-it-works' && (
@@ -4234,7 +4234,7 @@ const App = () => {
                   <li><strong>The Hint-Dropper:</strong> For individuals who wish to receive gifts they truly desire without having to explicitly ask or risk getting something they don't need. Our platform allows users to create and manage wishlists, subtly share them, and ensure their loved ones have a clear idea of their preferences.</li>
                   <li><strong>The Last-Minute Shopper:</strong> We understand that life gets busy! For those who need a quick, yet thoughtful gift solution, WyshDrop offers efficient search, curated categories, and personalized suggestions to help you find the ideal present even when time is short.</li>
                 </ol>
-
+                <p class="mb-4 text-center text-sm italic text-gray-500">WyshDrop is a participant in the Amazon Services LLC Associates Program, an affiliate advertising program designed to provide a means for sites to earn advertising fees by advertising and linking to Amazon.com. As an Amazon Associate, we earn from qualifying purchases.</p>
                 <h3 class="text-3xl font-bold text-[var(--primary-color)] mb-6 text-center">The Creators</h3>
                 <div class="flex flex-col md:flex-row justify-center items-stretch gap-8 mb-12">
                   <div class="flex-1 flex flex-col items-center text-center bg-[var(--main-bg-color)] p-6 rounded-lg shadow-md border-2 border-[var(--border-color)]">
