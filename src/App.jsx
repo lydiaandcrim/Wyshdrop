@@ -68,7 +68,7 @@ const debounce = (func, delay) => {
 // Reusable ProductSection Component (used on Home page and Category pages)
 const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef, products: propProducts, showSeeMore = true }) => {
   const scrollRef = useRef(null);
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showLeftArrow, setShowLeftArrow] = useState(true);
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [products, setProducts] = useState(propProducts || []); // Use propProducts if provided, otherwise fetch
   const [isLoading, setIsLoading] = useState(propProducts ? false : true); // Loading state for products
@@ -160,7 +160,7 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
     }
   };
 
-  const scrollAmount = 300; // Pixels to scroll
+  const scrollAmount = 600; // Pixels to scroll
 
   return (
     <section className="mb-12 relative"> {/* Increased margin-bottom for more space between sections */}
@@ -866,7 +866,7 @@ const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAdd
         query = query.gte('price', 100);
       }
 
-      query = query.limit(50); // Limit results for performance
+      query = query.limit(10); // Limit results for performance
 
       const { data, error } = await query;
 
@@ -1060,8 +1060,8 @@ const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAdd
         </div>
       </section>
       {/* Search Results Section */}
-      <section className="w-full mx-auto px-4 md:px-12 mb-8">
-        <h3 className="text-xl font-semibold text-[var(--primary-color)] mb-3">
+      <section className="w-full mx-auto mb-8">
+        <h3 className="text-xl font-semibold text-[var(--primary-color)] mb-3 text-center">
           {searchTerm.trim() === '' ? 'Popular / Most Searched Items' : `Results for "${searchTerm}"`}
         </h3>
         {isSearching ? (
@@ -1069,15 +1069,30 @@ const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAdd
             <i className="fas fa-spinner fa-spin mr-2"></i> Searching for products...
           </div>
         ) : searchResults.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-12 px-4">
             {searchResults.map((product) => (
-              <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
+              <div key={product.id} className="flex-shrink-0 w-[240px] h-[380px] bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] flex flex-col items-center justify-between p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
                 onClick={() => { onProductClick(product); playSound(clickSoundRef, 'click', soundSettings); }}>
-                <div className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2">
-                  <img src={product.image_url || `https://placehold.co/240x360/D3A173/FFFFFF?text=No+Image+Available`} alt={product.name || 'Product Image'} className="absolute inset-0 w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x360/D3A173/FFFFFF?text=Image+Load+Error`} />
+                {/* Product image with adjusted height and padding */}
+                <div
+                  className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2"
+                >
+                  <img
+                    src={product.image_url || `https://placehold.co/240x360/D3A173/FFFFFF?text=No+Image+Available`}
+                    alt={product.name || 'Product Image'}
+                    className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] object-cover rounded-md"
+                    onError={(e) => e.target.src = `https://placehold.co/240x360/D3A173/FFFFFF?text=Image+Load+Error`}
+                  />
+                  {/* Price inside the image box */}
                   <p className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-xs">${product.price}</p>
                 </div>
-                <h3 className="text-base font-semibold text-[var(--primary-color)] text-center mb-1 line-clamp-2">{product.name}</h3>
+                {/* Container for the product title to control height and overflow */}
+                <div className="h-16 flex items-center justify-center overflow-hidden">
+                  <h3 className={`font-semibold text-[var(--primary-color)] text-center text-base line-clamp-2`}>
+                    {product.name}
+                  </h3>
+                </div>
+                {/* Add to Wyshlist and Go Buy buttons below */}
                 <div className="flex flex-col space-y-2 w-full px-1">
                   <button
                     onClick={(e) => { e.stopPropagation(); onAddProductToWishlist(product); playSound(clickSoundRef, 'click', soundSettings); }}
@@ -1108,10 +1123,6 @@ const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAdd
           <ProductSection title="Popular / Most Searched Items" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
         </div>
       )}
-      {/* Popular/Most Searched Items Carousel */}
-      <div className="w-full mx-auto"> {/* Adjusted margins */}
-        <ProductSection title="Popular / Most Searched Items" onSeeMoreClick={onSeeMoreClick} onProductClick={onProductClick} onAddProductToWishlist={onAddProductToWishlist} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
-      </div>
 
       {/* Existing Category List with Hover Dropdowns and Quiz Me / Recommended Section */}
       <div className="w-full mx-auto px-4 md:px-12 py-12"> {/* Adjusted padding */}
@@ -1196,17 +1207,38 @@ const BookmarksPage = ({ bookmarkedProducts, soundSettings, clickSoundRef }) => 
       </section>
 
       {/* Bookmarked Products Grid */}
-      <div className="w-full mx-auto px-4 md:px-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Adjusted padding */}
+      <div className="w-full mx-auto px-4 md:px-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">{/* Adjusted padding */}
         {bookmarkedProducts.length > 0 ? (
           bookmarkedProducts.map((product) => (
-            <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-4 flex flex-col items-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
-              {/* Made image and card bigger */}
-              <img src={product.image_url} alt={product.name} className="w-full h-56 object-cover rounded-md mb-4" onError={(e) => e.target.src = `https://placehold.co/200x200/D3A173/FFFFFF?text=${(product.name || 'Product').replace(/\s/g, '+')}+Image`} /> // Updated text
-              <h3 className="text-xl font-semibold text-[var(--primary-color)] mb-2 text-center">{product.name}</h3>
-              <p className="text-lg text-gray-700 mb-2">${product.price}</p>
-              <button onClick={() => playSound(clickSoundRef, 'click', soundSettings)} className="mt-auto px-6 py-2 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
-                Hint
-              </button>
+            <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-3 flex flex-col items-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
+  {/* Aspect-ratio container */}
+              <div className="relative w-full h-0 pb-[150%] bg-gray-200 rounded-md overflow-hidden mb-3">
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  className="absolute top-0 left-0 w-full h-full object-cover"
+                  onError={(e) => e.target.src = `https://placehold.co/200x300/D3A173/FFFFFF?text=Image+Error`}
+                />
+              </div>
+              <h3 className="text-base font-semibold text-[var(--primary-color)] mb-1 text-center h-12 line-clamp-2">{product.name}</h3>
+              <p className="text-md text-gray-700 mb-2">${product.price}</p>
+              
+              {/* Container for the two buttons */}
+              <div className="flex items-center justify-center space-x-2 mt-auto w-full">
+                <button 
+                  onClick={() => playSound(clickSoundRef, 'click', soundSettings)} 
+                  className="flex-1 px-4 py-2 text-sm bg-purple-500 text-white font-bold rounded-md shadow-md hover:bg-purple-600 transition-all duration-200 ease-in-out">
+                  Hint
+                </button>
+                <a
+                  href={product.amazon_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 px-4 py-2 text-sm bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out text-center"
+                >
+                  Go Buy
+                </a>
+              </div>
             </div>
           ))
         ) : (
@@ -1862,19 +1894,19 @@ const SubcategoryPage = ({ subcategoryName, onProductClick, onAddProductToWishli
         />
         {/* Removed text overlay */}
       </section>
-      <div className="w-full mx-auto px-4 md:px-12"> {/* Adjusted padding */}
+      <div className="w-full mx-auto px-4 md:px-12 pb-16">{/* Adjusted padding */}
         {isLoading ? (
           <div className="text-center text-xl text-[var(--primary-color)]">Loading products...</div>
         ) : subcategoryProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"> {/* Changed to 4 columns on large screens, reduced gap for tighter fit */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-14">{/* Changed to 4 columns on large screens, reduced gap for tighter fit */}
             {subcategoryProducts.map((product) => (
-              <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"> {/* Reduced overall product box padding to p-2 */}
-                <div className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2"> {/* Added p-2 for inner image padding, adjusted mb */}
+              <div key={product.id} className="flex-shrink-0 w-[240px] h-[380px] bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] flex flex-col items-center justify-between p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
+                <div className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2">
                   <img src={product.image_url} alt={product.name} className="absolute inset-0 w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x360/D3A173/FFFFFF?text=${(product.name || 'Product').replace(/\s/g, '+')}+Image+Load+Error`} /> {/* Updated placeholder text */}
                   <p className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-xs">${product.price}</p> {/* Adjusted price position and font size */}
                 </div>
                 <h3 className="text-base font-semibold text-[var(--primary-color)] text-center mb-1 line-clamp-2">{product.name}</h3> {/* Smaller font size, added line-clamp */}
-                <div className="flex flex-col space-y-2 w-full px-1"> {/* Smaller space-y and px */}
+                <div className="flex flex-col space-y-1 w-full px-1"> {/* Smaller space-y and px */}
                   <button
                     onClick={() => { onAddProductToWishlist(product); playSound(clickSoundRef, 'click', soundSettings); }}
                     className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full"> {/* Smaller padding and font size */}
@@ -2493,16 +2525,30 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
   };
 
   // Dummy recommended products for this page (will be replaced by actual data later)
-  const recommendedProducts = [...Array(4)].map((_, i) => ({
-    id: `rec-product-${i + 1}`,
-    name: `Recommended Item ${i + 1}`,
-    image_url: `https://placehold.co/240x280/A1D3B3/FFFFFF?text=Recommended+Item+${i + 1}`, // Adjusted height for more room
-    price: (15 + i * 10).toFixed(2),
-    description: `A great recommended item.`,
-    rating: Math.floor(Math.random() * 2) + 4,
-    comments: [],
-    amazon_link: `https://www.amazon.com/dp/B07PFV1QCH?tag=yourtag-${i}` // Placeholder Amazon link
-  }));
+  // State for recommended products
+  const [recommendedProducts, setRecommendedProducts] = useState([]);
+
+  // --- SUPABASE INTEGRATION: Fetch recommended products based on subcategory ---
+  useEffect(() => {
+    const fetchRecommendedProducts = async () => {
+      if (!product || !product.subcategory) return;
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('subcategory', product.subcategory)
+        .neq('id', product.id) // Exclude the current product
+        .limit(4); // Limit to 4 recommended products
+
+      if (error) {
+        console.error('Error fetching recommended products:', error);
+      } else {
+        setRecommendedProducts(data);
+      }
+    };
+
+    fetchRecommendedProducts();
+  }, [product]); // Re-fetch when the product changes
 
   return (
     <div className="flex-grow w-full py-4 pt-[130px]">
@@ -2632,24 +2678,56 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
       </div>
 
       {/* Recommended Products Section */}
+      {/* Recommended Products Section */}
       <div className="w-full mx-auto mt-8 px-4 md:px-12">
         <h3 className="text-3xl font-bold text-[var(--primary-color)] mb-6 text-center">Recommended for You</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {recommendedProducts.map((recProduct) => (
-            <div key={recProduct.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-1 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-              onClick={() => { onProductClick(recProduct); playSound(clickSoundRef, 'click', soundSettings); }}>
-              <div className="w-full h-60 bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2"> {/* New 4:5 ratio */}
-                <img src={recProduct.image_url} alt={recProduct.name} className="w-full h-full object-cover rounded-md" onError={(e) => e.target.src = `https://placehold.co/240x280/A1D3B3/FFFFFF?text=${recProduct.name.replace(/\s/g, '+')}`} />
-                {/* Price inside the image box */}
-                <p className="absolute bottom-2 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-sm">${recProduct.price}</p>
+        {recommendedProducts.length > 0 ? (
+          <div className="flex flex-row overflow-x-auto space-x-4 custom-scrollbar">
+            {recommendedProducts.map((recProduct) => (
+              <div key={recProduct.id} className="flex-shrink-0 w-[240px] h-[380px] bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] flex flex-col items-center justify-between p-2 cursor-pointer transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
+                onClick={() => { onProductClick(recProduct); playSound(clickSoundRef, 'click', soundSettings); }}>
+                {/* Product image with adjusted height and padding */}
+                <div
+                  className="w-full h-0 pb-[150%] bg-[var(--main-bg-color)] rounded-md flex flex-col items-center justify-center text-[var(--primary-color)] text-lg relative mb-2 overflow-hidden p-2"
+                >
+                  <img
+                    src={recProduct.image_url || `https://placehold.co/240x360/D3A173/FFFFFF?text=No+Image+Available`}
+                    alt={recProduct.name || 'Product Image'}
+                    className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] object-cover rounded-md"
+                    onError={(e) => e.target.src = `https://placehold.co/240x360/D3A173/FFFFFF?text=Image+Load+Error`}
+                  />
+                  {/* Price inside the image box */}
+                  <p className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-xs">${recProduct.price}</p>
+                </div>
+                {/* Container for the product title to control height and overflow */}
+                <div className="h-16 flex items-center justify-center overflow-hidden">
+                  <h3 className={`font-semibold text-[var(--primary-color)] text-center text-base line-clamp-2`}>
+                    {recProduct.name}
+                  </h3>
+                </div>
+                {/* Price and Add to Wyshlist button below */}
+                <div className="flex flex-col space-y-2 w-full px-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAddProductToWishlist(recProduct); playSound(clickSoundRef, 'click', soundSettings); }}
+                    className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full">
+                    Add to Wyshlist
+                  </button>
+                  <a
+                    href={recProduct.amazon_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => { e.stopPropagation(); playSound(clickSoundRef, 'click', soundSettings); }}
+                    className="px-3 py-1.5 text-sm bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 text-center w-full"
+                  >
+                    Go Buy <i className="fas fa-external-link-alt ml-1"></i>
+                  </a>
+                </div>
               </div>
-              <h4 className="text-lg font-semibold text-[var(--primary-color)] text-center mb-2">{recProduct.name}</h4>
-              <button onClick={() => { onProductClick(recProduct); playSound(clickSoundRef, 'click', soundSettings); }} className="mt-auto px-4 py-2 bg-[var(--button-bg-color)] text-white rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full">
-                View Item
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-xl text-[var(--primary-color)] py-12">No recommended products found for this subcategory.</div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -3855,6 +3933,11 @@ const App = () => {
     setIsCoverPageTransitioningOut(false);
   });
 }, []); // Empty dependency array to run once on mount
+  // Effect to scroll to top on page change and save last page
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    localStorage.setItem('lastPage', currentPage);
+  }, [currentPage]);
 
   // Handle guest sign-in (no change needed for Supabase as it's not a direct auth method)
   const handleGuestSignIn = () => {
@@ -4455,11 +4538,8 @@ const App = () => {
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: transparent; /* Made transparent by default */
+          background: var(--primary-color); /* Made transparent by default */
           border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: var(--border-color); /* Show on hover */
         }
         /* Custom scrollbar for horizontal category bar */
         .custom-scrollbar-horizontal::-webkit-scrollbar {
