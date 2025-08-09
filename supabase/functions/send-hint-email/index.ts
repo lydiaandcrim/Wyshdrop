@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// --- THIS IS THE FIX: Add CORS headers to allow requests from your website ---
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // For production, replace '*' with your website's domain, e.g., 'https://wyshdrop.com'
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 // This function generates the HTML content for the hint email
 const generateHintEmailHtml = (senderName: string, product: any) => `
   <div style="font-family: sans-serif; line-height: 1.6; text-align: center; border: 1px solid #eee; padding: 20px;">
@@ -21,6 +27,11 @@ const generateHintEmailHtml = (senderName: string, product: any) => `
 `;
 
 serve(async (req) => {
+  // --- THIS IS THE FIX: Handle preflight OPTIONS request for CORS ---
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     // 1. Extract the product and recipient data from the request body
     const { product, recipients, sender } = await req.json();
@@ -30,8 +41,6 @@ serve(async (req) => {
     }
 
     // 2. Get the SendGrid API key securely from your Supabase secrets.
-    // IMPORTANT: Never hardcode API keys directly in your code.
-    // This line retrieves the secret you set in your Supabase project dashboard.
     const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
     if (!sendgridApiKey) {
       throw new Error("SENDGRID_API_KEY is not set in Supabase secrets.");
@@ -61,20 +70,19 @@ serve(async (req) => {
       if (!sendgridResponse.ok) {
         const errorBody = await sendgridResponse.json();
         console.error(`Failed to send hint email to ${recipient.contact_email}:`, errorBody);
-        // Continue to next recipient even if one fails
       }
     }
 
-    // 4. Return a success response
+    // 4. Return a success response with CORS headers
     return new Response(JSON.stringify({ message: "Hint emails processed successfully!" }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
 
   } catch (error) {
-    // Return an error response if anything goes wrong
+    // Return an error response with CORS headers
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }

@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// --- Add CORS headers to allow requests from your website ---
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // For production, replace '*' with your website's domain
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 // The content of your welcome email
 const emailSubject = "Welcome to Wyshdrop 🎁";
 const instagramLink = "https://www.instagram.com/lydiaandcrim?igsh=MThiZDk0Y3F6anlzNg==";
@@ -18,13 +24,18 @@ const generateEmailHtml = (username: string) => `
 `;
 
 serve(async (req) => {
+  // Handle preflight OPTIONS request for CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     // 1. Extract the new user data from the request
     const { record: newUser } = await req.json();
     const userEmail = newUser.email;
     const username = newUser.raw_user_meta_data?.username || 'there';
 
-    // 2. Get the SendGrid API key securely from your Supabase secrets
+    // 2. Get the SendGrid API key from your Supabase secrets
     const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
     if (!sendgridApiKey) {
       throw new Error("SENDGRID_API_KEY is not set in Supabase secrets.");
@@ -57,14 +68,14 @@ serve(async (req) => {
 
     // 5. Return a success response
     return new Response(JSON.stringify({ message: "Welcome email sent successfully!" }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
 
   } catch (error) {
-    // Return an error response if anything goes wrong
+    // Return an error response
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }
