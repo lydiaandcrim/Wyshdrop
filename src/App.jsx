@@ -66,76 +66,89 @@ const debounce = (func, delay) => {
 };
 
 // Reusable ProductSection Component (used on Home page and Category pages)
+// Reusable ProductSection Component (used on Home page and Category pages)
 const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef, products: propProducts, showSeeMore = true }) => {
   const scrollRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(true);
   const [showRightArrow, setShowRightArrow] = useState(true);
-  const [products, setProducts] = useState(propProducts || []); // Use propProducts if provided, otherwise fetch
-  const [isLoading, setIsLoading] = useState(propProducts ? false : true); // Loading state for products
 
-  // Fetch products from Supabase based on the section title if propProducts are not provided
-  useEffect(() => {
-    if (propProducts) {
-      setProducts(propProducts);
-      setIsLoading(false);
-      return;
-    }
-
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      let query = supabase.from('products').select('*');
-
-      // Implement filtering/ordering based on the section title
-      if (title === "TRENDING") {
-        query = query.eq('category', 'Trending').order('created_at', { ascending: false }).limit(10); // Filter by 'Trending' category
-      } else if (title === "Popular / Most Searched Items" || title.includes("Recommended for You")) {
-        query = query.order('rating', { ascending: false }).limit(10); // Example: highest rated
-      } else if (title.includes("for ")) { // Assuming "for [Contact Name]"
-        // This case is handled by propProducts when used in RecommendedPage
-        // If it somehow falls here, it will just fetch general products
-        query = query.limit(10);
-      }
-      else {
-  // Determine if the title is a main category or a subcategory
-  // This is a simplified check. A more robust solution might involve a lookup table or a dedicated prop.
-  // For now, assuming if it's not a main category title, it's a subcategory.
-        const mainCategories = ["Trending", "Books", "Accessories", "DIY / Art", "Tech", "Cups / Drinks", "Stationary", "Music", "Figurines / Plushies", "Gift Cards", "Blooms"];
-        if (mainCategories.includes(title)) {
-          query = query.eq('category', title).limit(10); // Filter by main category name
-        } else {
-          query = query.eq('subcategory', title).limit(10); // Filter by subcategory name
-        }
-      }
-      
-      const { data, error } = await query;
-
-      if (error) {
-        console.error(`Error fetching products for ${title}:`, error);
-        console.log(`Supabase fetch error details for ${title}:`, error); // <--- ADD THIS LINE
-      } else {
-        setProducts(data);
-        console.log(`Supabase fetched data for ${title}:`, data); // <--- ADD THIS LINE
-      }
-      setIsLoading(false);
-    };
-
-    fetchProducts();
-  }, [title, propProducts]); // Re-fetch when the section title or propProducts changes
+  // State for the products this section will display.
+  const [products, setProducts] = useState([]);
+  // State for loading.
+  const [isLoading, setIsLoading] = useState(true);
 
   const checkScrollArrows = useCallback(() => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
       setShowLeftArrow(scrollLeft > 0);
-      setShowRightArrow(scrollLeft + clientWidth < scrollWidth);
+      setShowRightArrow(scrollLeft + clientWidth < scrollWidth - 1); // -1 for pixel-perfect check
     }
   }, []);
 
+  // This is the main data fetching and product handling effect.
+  // Effect 1: Handles products when they are passed in directly as props (e.g., on the Profile page).
   useEffect(() => {
-    checkScrollArrows(); // Check on mount
+    // This effect only runs if 'propProducts' is provided.
+    if (propProducts) {
+      setProducts(propProducts);
+      setIsLoading(false);
+      setTimeout(checkScrollArrows, 0); // Check arrows after products are rendered.
+    }
+  }, [propProducts, checkScrollArrows]); // It correctly depends on the props.
+
+  // Effect 2: Fetches products from Supabase ONLY if they are NOT passed in as props (e.g., on the Home page for guests).
+  useEffect(() => {
+    // If products are coming from props, do nothing and let the first effect handle it.
+    if (propProducts) {
+      return;
+    }
+
+    // If no products are provided, fetch them from the database.
+    const fetchFromSupabase = async () => {
+      console.log(`DEBUG: Attempting to fetch products for section: "${title}"`); // <-- ADD THIS LINE
+      setIsLoading(true);
+      try {
+        let query = supabase.from('products').select('*');
+
+        // Filtering logic based on the section's title
+        if (title === "TRENDING") {
+            query = query.eq('category', 'Trending').order('created_at', { ascending: false }).limit(10);
+        } else if (title === "Popular / Most Searched Items" || title.includes("Recommended for You")) {
+            query = query.order('rating', { ascending: false }).limit(10);
+        } else {
+            const mainCategories = ["Trending", "Books", "Accessories", "DIY / Art", "Tech", "Cups / Drinks", "Stationary", "Music", "Figurines / Plushies", "Gift Cards", "Blooms"];
+            if (mainCategories.includes(title)) {
+                query = query.eq('category', title).limit(10);
+            } else {
+                query = query.eq('subcategory', title).limit(10);
+            }
+        }
+
+        const { data, error } = await query;
+        console.log(`DEBUG: Supabase response for "${title}"`, { data, error });
+        if (error) throw error;
+
+        setProducts(data || []);
+
+      } catch (error) {
+        console.error(`Error fetching products for ${title}:`, error.message);
+        setProducts([]);
+      } finally {
+        setIsLoading(false); // This will now correctly turn off the "Loading..." message.
+      }
+    };
+
+    fetchFromSupabase();
+  }, [title]); // This effect correctly depends ONLY on the title for fetching.
+
+
+  // Effect for managing scroll arrows when the component mounts or products change
+  useEffect(() => {
+    checkScrollArrows();
     const currentRef = scrollRef.current;
     if (currentRef) {
       currentRef.addEventListener('scroll', checkScrollArrows);
-      window.addEventListener('resize', checkScrollArrows); // Recheck on resize
+      window.addEventListener('resize', checkScrollArrows);
     }
     return () => {
       if (currentRef) {
@@ -143,20 +156,20 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
       }
       window.removeEventListener('resize', checkScrollArrows);
     };
-  }, [checkScrollArrows]);
+  }, [checkScrollArrows, products]); // Re-check arrows when the products list changes
 
 
   const handleScrollLeft = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-      playSound(clickSoundRef, 'click', soundSettings); // Play click sound for scrolling
+      scrollRef.current.scrollBy({ left: -600, behavior: 'smooth' });
+      playSound(clickSoundRef, 'click', soundSettings);
     }
   };
 
   const handleScrollRight = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-      playSound(clickSoundRef, 'click', soundSettings); // Play click sound for scrolling
+      scrollRef.current.scrollBy({ left: 600, behavior: 'smooth' });
+      playSound(clickSoundRef, 'click', soundSettings);
     }
   };
 
@@ -2388,7 +2401,7 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
   const handleBookmarkToggle = async () => {
     playSound(clickSoundRef, 'click', soundSettings);
     if (!user.isLoggedIn || !user.id) {
-      alert("Please sign in to manage your wishlist.");
+      setCurrentPage('cover'); // Redirect to sign-in page
       return;
     }
 
@@ -2449,7 +2462,7 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
       return;
     }
     if (!user.isLoggedIn || !user.id) {
-      alert("Please sign in to add comments.");
+      setCurrentPage('cover'); // Redirect to sign-in page
       return;
     }
 
@@ -3312,152 +3325,7 @@ const App = () => {
       };
     }
   });
-  useEffect(() => {
-    // Declare authListener here so it's accessible in the cleanup function.
-    // It will hold the subscription object from Supabase.
-    let authListener = null;
-
-    // --- STEP 1: Set up the *ongoing* authentication state change listener immediately ---
-    // This ensures authListener gets its value right when the effect runs,
-    // regardless of whether getSession() has completed or not.
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth event:", event, "Session:", session);
-        if (session) {
-          const userEmail = session.user.email;
-          const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
-          const userId = session.user.id;
-
-          // Try to fetch existing profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-
-          if (profileError && profileError.code === 'PGRST116') { // No rows found (profile doesn't exist)
-            console.log("Profile not found, creating new profile...");
-            // Create new profile
-            const { data: newProfile, error: insertError } = await supabase
-              .from('profiles')
-              .insert([
-                {
-                  id: userId,
-                  username: userName,
-                  first_name: session.user.user_metadata?.first_name || null,
-                  last_name: session.user.user_metadata?.last_name || null,
-                  email: userEmail,
-                  profile_image_url: session.user.user_metadata?.avatar_url || null,
-                  has_taken_quiz: false,
-                  quiz_answers: {},
-                  sound_settings: { // Default sound settings for new user
-                    isAllSoundEnabled: true,
-                    isClickSoundEnabled: true,
-                    isScrollSoundEnabled: false,
-                    isPageTransitionSoundEnabled: false,
-                  },
-                  // ... (existing profile fields) ...
-                  is_dark_mode: false, // Default dark mode for new user
-                  saved_palette_name: colorPalettes[0].name, // <--- NEW: Default saved palette name // Default dark mode for new user
-                }
-              ])
-              .select()
-              .single();
-
-            if (insertError) {
-              console.error('Error creating profile:', insertError);
-            } else {
-              console.log("New profile created:", newProfile);
-              setUser({
-                isLoggedIn: true,
-                username: newProfile.username,
-                email: newProfile.email,
-                id: newProfile.id,
-                profile_image_url: newProfile.profile_image_url
-              });
-              setHasTakenQuiz(newProfile.has_taken_quiz);
-              await fetchUserSpecificData(newProfile.id); // Fetch other user-specific data
-              setCurrentPage('home');
-            }
-          } else if (profileError) {
-            console.error('Error fetching profile:', profileError);
-          } else if (profile) {
-            // Profile exists, set user state
-            setUser({
-              isLoggedIn: true,
-              username: profile.username,
-              email: profile.email,
-              id: profile.id,
-              profile_image_url: profile.profile_image_url
-            });
-            setHasTakenQuiz(profile.has_taken_quiz);
-            await fetchUserSpecificData(profile.id); // Fetch other user-specific data
-            setCurrentPage('home');
-          }
-        } else {
-          // No session or signed out
-          setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-          setHasTakenQuiz(false);
-          setBookmarkedProducts([]);
-          setGiftingContacts([]);
-          setCurrentPage('splash'); // Redirect to splash if no session
-        }
-        setIsCoverPageTransitioningOut(false); // Reset transition state after auth check
-      }
-    );
-    authListener = listener; // Assign the listener to the outer variable immediately
-
-    // --- STEP 2: Perform an *initial* session check on mount ---
-    // This is in case onAuthStateChange doesn't fire immediately on page load
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        const userEmail = session.user.email;
-        const userName = session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
-        const userId = session.user.id;
-
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (profileError && profileError.code === 'PGRST116') {
-            console.log("Initial session check: Profile not found, will be created on next auth event.");
-            // Don't create here, let onAuthStateChange handle it after signup/login
-        } else if (profile) {
-            setUser({
-                isLoggedIn: true,
-                username: profile.username,
-                email: profile.email,
-                id: profile.id,
-                profile_image_url: profile.profile_image_url
-            });
-            setHasTakenQuiz(profile.has_taken_quiz);
-            await fetchUserSpecificData(profile.id);
-            setCurrentPage('home');
-        }
-      } else {
-        setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-        setCurrentPage('splash');
-      }
-      setIsCoverPageTransitioningOut(false);
-    }).catch(error => {
-      console.error("Error getting initial Supabase session:", error.message);
-      setUser({ isLoggedIn: false, username: 'Guest', email: '', id: null, profile_image_url: null });
-      setCurrentPage('splash');
-      setShowApiKeyError(true);
-      setIsCoverPageTransitioningOut(false);
-    });
-
-    // --- STEP 3: Cleanup function ---
-    // This will run when the component unmounts.
-    return () => {
-      // Only try to unsubscribe if authListener was successfully assigned a value
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+   // <-- CRITICAL FIX: Empty dependency array ensures this runs only ONCE. // <-- CRITICAL FIX: Empty dependency array ensures this runs only ONCE. // Empty dependency array means this effect runs once on mount and cleans up on unmount
 
   // Initialize dark mode from localStorage or default
   // Removed duplicate isDarkMode state declaration to fix redeclaration error
@@ -3741,7 +3609,7 @@ const App = () => {
   // --- SUPABASE INTEGRATION: Add Product to Wishlist ---
   const handleAddProductToWishlist = async (product) => {
     if (!user.isLoggedIn || !user.id) {
-      alert("Please sign in to add items to your wishlist.");
+      setCurrentPage('cover'); // Redirect to sign-in page
       return;
     }
 
@@ -3780,6 +3648,10 @@ const App = () => {
 
   // Handler for opening the Hint modal
   const handleHintClick = (product) => {
+    if (!user.isLoggedIn) {
+      setCurrentPage('cover'); // Redirect to sign-in page
+      return;
+    }
     setSelectedProduct(product); // Ensure the product is set for the modal
     setShowHintModal(true);
   };
@@ -3933,20 +3805,16 @@ const App = () => {
     setIsCoverPageTransitioningOut(false);
   });
 }, []); // Empty dependency array to run once on mount
-  // Effect to scroll to top on page change and save last page
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    localStorage.setItem('lastPage', currentPage);
-  }, [currentPage]);
 
   // Handle guest sign-in (no change needed for Supabase as it's not a direct auth method)
   const handleGuestSignIn = () => {
-    setIsCoverPageTransitioningOut(true); // Trigger transition out
+    setIsCoverPageTransitioningOut(true);
     setTimeout(() => {
-      setUser({ isLoggedIn: true, username: 'Guest', email: 'guest@wyshdrop.com', id: 'guest-user-id', profile_image_url: null }); // Assign a dummy ID for guest
-      setCurrentPage('home'); // Navigate to home page after guest sign-in
-      setIsCoverPageTransitioningOut(false); // Reset transition state
-    }, 1000); // Match CSS transition duration
+      // For a guest, the user state is already correctly set by the auth listener.
+      // We just need to navigate to the home page.
+      setCurrentPage('home');
+      setIsCoverPageTransitioningOut(false);
+    }, 1000);
   };
 
   // Handle sign-in button click on cover page (for future authentication flow)
@@ -4323,7 +4191,7 @@ const App = () => {
                   <div class="flex-1 flex flex-col items-center text-center bg-[var(--main-bg-color)] p-6 rounded-lg shadow-md border-2 border-[var(--border-color)]">
                     <img src="https://placehold.co/150x150/A1D3B3/FFFFFF?text=Crim" alt="Crim's Profile" class="w-32 h-32 rounded-full object-cover mb-4 border-4 border-[var(--primary-color)]"/>
                     <h4 class="text-2xl font-bold text-[var(--primary-color)] mb-2">Crim</h4>
-                    <p>Crim is the visionary behind WyshDrop's user experience and design. With a keen eye for aesthetics and a deep understanding of user psychology, Crim ensures that every interaction on the platform is intuitive, delightful, and visually appealing. Their passion for seamless digital experiences is at the heart of WyshDrop's inviting interface.</p>
+                    <p>Crim built this entire website from the ground up with zero budget — no dollars spent at all. She brought Lydia in, her best friend, to give extra support and help make Wyshdrop what it is today. To everyone who’s visited Wyshdrop and stopped by the About Us page, thank you so much for your support — it really means the world to us.</p>
                   </div>
                   <div class="flex-1 flex flex-col items-center text-center bg-[var(--main-bg-color)] p-6 rounded-lg shadow-md border-2 border-[var(--border-color)]">
                     <img src="https://placehold.co/150x150/D3A173/FFFFFF?text=Lydia" alt="Lydia's Profile" class="w-32 h-32 rounded-full object-cover mb-4 border-4 border-[var(--primary-color)]"/>
@@ -4393,6 +4261,7 @@ const App = () => {
               setBookmarkedProducts={setBookmarkedProducts} // Pass bookmark setter
               user={user} // Pass user object for comments
               clickSoundRef={clickSoundRef} // Pass clickSoundRef
+              setCurrentPage={setCurrentPage}
             />
           )}
           {currentPage === 'recommended' && (
