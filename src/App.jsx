@@ -98,48 +98,42 @@ const ProductSection = ({ title, onSeeMoreClick, onProductClick, onAddProductToW
 
   // Effect 2: Fetches products from Supabase ONLY if they are NOT passed in as props (e.g., on the Home page for guests).
   useEffect(() => {
-    // If products are coming from props, do nothing and let the first effect handle it.
+    // If products are passed as a prop, don't fetch from the database.
     if (propProducts) {
-      return;
+        setIsLoading(false); // We have the data, so we are not loading.
+        return;
     }
 
     // If no products are provided, fetch them from the database.
     const fetchFromSupabase = async () => {
-      console.log(`DEBUG: Attempting to fetch products for section: "${title}"`); // <-- ADD THIS LINE
-      setIsLoading(true);
-      try {
-        let query = supabase.from('products').select('*');
-
-        // Filtering logic based on the section's title
-        if (title === "TRENDING") {
-            query = query.eq('category', 'Trending').order('created_at', { ascending: false }).limit(10);
-        } else if (title === "Popular / Most Searched Items" || title.includes("Recommended for You")) {
-            query = query.order('rating', { ascending: false }).limit(10);
-        } else {
-            const mainCategories = ["Trending", "Books", "Accessories", "DIY / Art", "Tech", "Cups / Drinks", "Stationary", "Music", "Figurines / Plushies", "Gift Cards", "Blooms"];
-            if (mainCategories.includes(title)) {
-                query = query.eq('category', title).limit(10);
+        setIsLoading(true);
+        try {
+            let query = supabase.from('products').select('*');
+            if (title === "TRENDING") {
+                query = query.eq('category', 'Trending').order('created_at', { ascending: false }).limit(10);
+            } else if (title === "Popular / Most Searched Items" || title.includes("Product Suggestions for")) { // Updated condition
+                query = query.order('rating', { ascending: false }).limit(10);
             } else {
-                query = query.eq('subcategory', title).limit(10);
+                const mainCategories = ["Trending", "Books", "Accessories", "DIY / Art", "Tech", "Cups / Drinks", "Stationary", "Music", "Figurines / Plushies", "Gift Cards", "Blooms"];
+                if (mainCategories.includes(title)) {
+                    query = query.eq('category', title).limit(10);
+                } else {
+                    query = query.eq('subcategory', title).limit(10);
+                }
             }
+            const { data, error } = await query;
+            if (error) throw error;
+            setProducts(data || []);
+        } catch (error) {
+            console.error(`Error fetching products for ${title}:`, error.message);
+            setProducts([]);
+        } finally {
+            setIsLoading(false);
         }
-
-        const { data, error } = await query;
-        console.log(`DEBUG: Supabase response for "${title}"`, { data, error });
-        if (error) throw error;
-
-        setProducts(data || []);
-
-      } catch (error) {
-        console.error(`Error fetching products for ${title}:`, error.message);
-        setProducts([]);
-      } finally {
-        setIsLoading(false); // This will now correctly turn off the "Loading..." message.
-      }
     };
 
     fetchFromSupabase();
-  }, [title]); // This effect correctly depends ONLY on the title for fetching.
+}, [title, propProducts]); // This effect correctly depends on the title and propProducts. // This effect correctly depends ONLY on the title for fetching.
 
 
   // Effect for managing scroll arrows when the component mounts or products change
@@ -430,7 +424,7 @@ const HomeContent = ({ onSeeMoreClick, onDiscoverClick, isLoggedIn, onAboutUsCli
 };
 
 // Quiz Modal Component
-const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundRef, user, giftingContacts }) => { // Added 'user' and 'giftingContacts' prop
+const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundRef, user, giftingContacts }) => {// Added 'user' and 'giftingContacts' prop
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -440,72 +434,57 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
 
   const questions = [
     {
+      id: 'contact',
+      text: 'Who is this quiz for?',
+      type: 'contact-select', // A new custom type
+      options: giftingContacts, // Pass the contacts as options
+    },
+    {
       id: 'recipient',
-      text: 'Who are you shopping for?',
+      text: "What is their relationship to you?",
       type: 'radio-with-other',
       options: ['Friend', 'Family Member', 'Partner', 'Colleague', 'Child'],
-      otherPlaceholder: 'e.g., My neighbor, My pet'
+      otherPlaceholder: 'e.g., My neighbor'
     },
     {
       id: 'occasion',
       text: 'What is the occasion?',
       type: 'radio-with-other',
       options: ['Birthday', 'Anniversary', 'Holiday', 'Graduation', 'Just Because'],
-      otherPlaceholder: 'e.g., Housewarming, Promotion'
+      otherPlaceholder: 'e.g., Housewarming'
     },
     {
       id: 'interests',
       text: 'What are their main interests or hobbies?',
-      type: 'text', // Keeping as text for free-form input
-      placeholder: 'e.g., Reading, Gaming, Cooking, Art, Outdoors'
+      type: 'text',
+      placeholder: 'e.g., Reading, Gaming, Art'
     },
     {
       id: 'budget',
       text: 'What is your approximate budget?',
-      type: 'radio', // Simple radio for budget
+      type: 'radio',
       options: ['Under $25', '$25 - $50', '$50 - $100', 'Over $100']
     },
     {
       id: 'personality',
       text: 'Describe their personality in a few words:',
-      type: 'text', // Keeping as text for free-form input
-      placeholder: 'e.g., Creative, Adventurous, Cozy, Practical, Humorous'
+      type: 'text',
+      placeholder: 'e.g., Creative, Adventurous, Practical'
     }
   ];
 
   // --- SUPABASE INTEGRATION: Load quiz answers on open ---
+  // --- SUPABASE INTEGRATION: Load quiz answers on open ---
   useEffect(() => {
-    if (isOpen && user.id) {
-      const loadQuizProgress = async () => {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('quiz_answers')
-          .eq('id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
-          console.error('Error loading quiz progress:', error);
-        } else if (data && data.quiz_answers) {
-          setAnswers(data.quiz_answers);
-          // Find the last answered question to resume from
-          const lastAnsweredIndex = questions.findIndex(q => !data.quiz_answers[q.id]);
-          if (lastAnsweredIndex !== -1) {
-            setCurrentQuestionIndex(lastAnsweredIndex);
-          } else {
-            setCurrentQuestionIndex(questions.length - 1); // If all answered, go to last question
-          }
-        }
-      };
-      loadQuizProgress();
-    } else if (!isOpen) {
-      // Reset state when modal closes
+    if (isOpen) {
+      // Always reset to a clean slate when the modal opens
       setCurrentQuestionIndex(0);
-      setAnswers({});
+      setAnswers({ 'contact': { type: 'option', value: 'SELF' } });
       setQuizResults('');
       setIsLoading(false);
-      setSelectedContactForGift('');
+      setSelectedContactForGift('SELF');
     }
-  }, [isOpen, user.id]);
+  }, [isOpen]);
 
   // --- SUPABASE INTEGRATION: Debounced save of quiz answers ---
   useEffect(() => {
@@ -551,13 +530,20 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
   };
 
   const handleNext = () => {
-    playSound(clickSoundRef, 'click', soundSettings); // Play click sound
+    playSound(clickSoundRef, 'click', soundSettings);
     const currentQuestion = questions[currentQuestionIndex];
     const currentAnswer = answers[currentQuestion.id];
 
-    if (!currentAnswer || !currentAnswer.value || (currentAnswer.type === 'other' && currentAnswer.value.trim() === '')) {
-      alert("Please provide an answer before proceeding."); // Simple alert for required answer
-      return;
+    // ** NEW: Simplified validation that works for all questions **
+    if (!currentAnswer || (currentAnswer.type !== 'other' && !currentAnswer.value) || (currentAnswer.type === 'other' && currentAnswer.value.trim() === '')) {
+      // The check for `!currentAnswer.value` now correctly handles the 'SELF' option
+      // but we need to allow the empty string for the "General" option.
+      if (currentQuestion.id === 'contact' && currentAnswer?.value === '') {
+          // This is the "General" option, it's valid, so we proceed.
+      } else {
+          alert("Please provide an answer before proceeding.");
+          return;
+      }
     }
 
     if (currentQuestionIndex < questions.length - 1) {
@@ -566,13 +552,25 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
       handleSubmitQuiz();
     }
   };
-
   const handleSubmitQuiz = async () => {
     setIsLoading(true);
     setQuizResults(''); // Clear previous results
 
     // Construct prompt for LLM
-    let prompt = "Generate 3-5 unique and creative gift ideas based on the following preferences, considering common product categories like Books, Accessories, Tech, DIY/Art, Cups/Drinks, Stationary, Music, Figurines/Plushies, Gift Cards, Blooms. For each idea, provide a brief reason why it's a good fit. Format the output as a numbered list.\n\n";
+    let prompt = `Based on the following quiz answers, generate 3-5 creative and specific gift ideas. For each idea, provide a product 'name', a brief one-sentence 'reason' why it's a good fit, and suggest 1-3 relevant product 'categories' from this list: Books, Accessories, Tech, DIY/Art, Cups/Drinks, Stationary, Music, Figurines/Plushies, Gift Cards, Blooms.
+
+    **IMPORTANT**: Your entire response MUST be a single, valid JSON array of objects, with no other text, explanations, or formatting outside of the JSON structure. Each object must have keys "name", "reason", and "categories" (which should be an array of strings).
+
+    Example format:
+    [
+      {
+        "name": "DIY Kpop-Themed Photocard Binder Kit",
+        "reason": "A perfect hands-on activity for a Kpop fan to organize their collection.",
+        "categories": ["DIY/Art", "Stationary"]
+      }
+    ]
+
+    Here are the user's answers:\n\n`;
     Object.keys(answers).forEach(key => {
       const questionText = questions.find(q => q.id === key).text;
       const answerValue = answers[key].value;
@@ -583,7 +581,7 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
       let chatHistory = [];
       chatHistory.push({ role: "user", parts: [{ text: prompt }] });
       const payload = { contents: chatHistory };
-      const apiKey = ""; // API key is intentionally left empty for Canvas to provide at runtime.
+      const apiKey = process.env.REACT_APP_GEMINI_API_KEY; // API key is intentionally left empty for Canvas to provide at runtime.
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
       console.log("Sending quiz prompt to Gemini API:", prompt);
@@ -607,47 +605,57 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
       if (result.candidates && result.candidates.length > 0 &&
           result.candidates[0].content && result.candidates[0].content.parts &&
           result.candidates[0].content.parts.length > 0) {
-        const text = result.candidates[0].content.parts[0].text;
-        setQuizResults(text);
-        console.log("Generated Quiz Results:", text);
+        const generatedIdeasText = result.candidates[0].content.parts[0].text; // The full ideas from Gemini
 
-        // --- SUPABASE INTEGRATION: Save quiz answers to user profile ---
+        // --- Create the summary for display ---
+        let summaryHtml = '<h4 class="text-lg font-semibold mb-2">Your Quiz Summary:</h4><ul class="list-disc list-inside text-left">';
+        Object.keys(answers).forEach(key => {
+          if (key === 'contact') return; // Don't show the 'Who is this for?' part
+          const questionText = questions.find(q => q.id === key)?.text || 'Question';
+          const answerValue = answers[key]?.value || 'Not answered';
+          summaryHtml += `<li><strong>${questionText}:</strong> ${answerValue}</li>`;
+        });
+        summaryHtml += '</ul>';
+
+        const finalDisplayHtml = `
+          ${summaryHtml}
+          <p class="font-bold text-xl text-center mt-6">IDEAS GENERATED, CHECK RECOMMENDED PAGE</p>
+        `;
+
+        setQuizResults(finalDisplayHtml); // Set the HTML for display in the modal
+        console.log("Generated Quiz Results (saved to DB):", generatedIdeasText);
+
+        // --- SUPABASE INTEGRATION: Save the FULL generated ideas to the database ---
         if (user.id) {
-          const { error: updateProfileError } = await supabase
-            .from('profiles')
-            .update({
-              has_taken_quiz: true,
-              quiz_answers: answers, // 'answers' state from the quiz
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
+            const contactIdToSave = selectedContactForGift === 'SELF' ? null : selectedContactForGift;
+            const { error: insertIdeasError } = await supabase
+              .from('contact_gift_ideas')
+              .insert([{
+                  user_id: user.id,
+                  contact_id: contactIdToSave,
+                  quiz_answers_snapshot: answers,
+                  generated_ideas_text: generatedIdeasText, // Save the full text
+                  created_at: new Date().toISOString()
+              }]);
 
-          if (updateProfileError) {
-            console.error('Error saving quiz answers to profile:', updateProfileError);
-            alert('Failed to save quiz answers: ' + updateProfileError.message);
-          } else {
-            console.log('Quiz answers saved to profile.');
-          }
+            if (insertIdeasError) {
+              console.error('Error saving generated gift ideas:', insertIdeasError);
+              alert('Failed to save gift ideas: ' + insertIdeasError.message);
+            } else {
+              console.log('Generated gift ideas saved.');
+              // ADD THIS BLOCK
+              const { error: clearProgressError } = await supabase
+                .from('profiles')
+                .update({ quiz_answers: {} }) // Reset to an empty object
+                .eq('id', user.id);
 
-          // --- SUPABASE INTEGRATION: Save generated gift ideas (potentially with contact) ---
-          const { error: insertIdeasError } = await supabase
-            .from('contact_gift_ideas') // Assuming this table exists for gift ideas
-            .insert([
-              {
-                user_id: user.id,
-                contact_id: selectedContactForGift || null, // Null if no contact selected
-                quiz_answers_snapshot: answers,
-                generated_ideas_text: text,
-                created_at: new Date().toISOString()
+              if (clearProgressError) {
+                console.error("Failed to clear old quiz progress:", clearProgressError);
+              } else {
+                console.log("Old quiz progress cleared from profile.");
               }
-            ]);
-
-          if (insertIdeasError) {
-            console.error('Error saving generated gift ideas:', insertIdeasError);
-            alert('Failed to save gift ideas: ' + insertIdeasError.message);
-          } else {
-            console.log('Generated gift ideas saved.');
-          }
+              // END OF BLOCK TO ADD
+            }
         }
         onQuizComplete(answers); // Call parent handler to update hasTakenQuiz state in App.js
       } else {
@@ -674,7 +682,7 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => { onClose(); playSound(clickSoundRef, 'click', soundSettings); }}> {/* Click outside to close */}
-      <div className="bg-[var(--box-bg-color)] p-6 rounded-lg shadow-lg border-2 border-[var(--border-color)] w-full max-w-lg mx-auto flex flex-col max-h-[90vh] overflow-y-auto relative" onClick={(e) => e.stopPropagation()}> {/* Prevent click from propagating to overlay */}
+      <div className="bg-gradient-to-br from-[var(--box-bg-color)] to-[var(--main-bg-color)] p-6 rounded-2xl shadow-2xl border border-[var(--border-color)] w-full max-w-lg mx-auto flex flex-col max-h-[90vh] overflow-y-auto relative" onClick={(e) => e.stopPropagation()}> {/* Prevent click from propagating to overlay */}
         <button
           onClick={() => { onClose(); playSound(clickSoundRef, 'click', soundSettings); }}
           className="absolute top-4 right-4 text-[var(--primary-color)] hover:text-gray-700 focus:outline-none transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
@@ -690,26 +698,30 @@ const QuizModal = ({ isOpen, onClose, onQuizComplete, soundSettings, clickSoundR
             <div className="prose prose-sm max-w-none text-[var(--primary-color)]">
               <p className="whitespace-pre-wrap">{quizResults}</p>
             </div>
-            {user.isLoggedIn && giftingContacts.length > 0 && (
-              <div className="mt-6 border-t border-[var(--border-color)] pt-4">
-                <h3 className="text-xl font-semibold text-[var(--primary-color)] mb-3">Associate with a Contact (Optional):</h3>
-                <select
-                  value={selectedContactForGift}
-                  onChange={(e) => { setSelectedContactForGift(e.target.value); playSound(clickSoundRef, 'click', soundSettings); }}
-                  className="w-full p-3 border border-gray-300 rounded-md bg-[var(--main-bg-color)] text-[var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
-                >
-                  <option value="">Select a contact...</option>
-                  {giftingContacts.map(contact => (
-                    <option key={contact.id} value={contact.id}>{contact.contact_name}</option>
-                  ))}
-                </select>
-                <p className="text-sm text-gray-500 mt-2">Selecting a contact will show these ideas in their section on the Recommended page.</p>
-              </div>
-            )}
           </div>
         ) : (
           <div className="flex-grow flex flex-col transition-all duration-500 ease-in-out transform translate-x-0" key={currentQuestionIndex}> {/* Animation key */}
             <p className="text-lg text-[var(--primary-color)] mb-4 text-center">{currentQuestion.text}</p>
+            {currentQuestion.type === 'contact-select' && (
+              <div className="flex flex-col space-y-2 mb-4">
+                <select
+                  value={answers['contact']?.value || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedContactForGift(value); // Keep this for selection logic
+                    handleAnswerChange('contact', value); // ** THIS IS THE FIX **
+                  }}
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-[var(--main-bg-color)] text-[var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+                >
+                  <option value="SELF">For Myself</option>
+                  <option value="">For a new person (General)</option>
+                  {giftingContacts.map(contact => (
+                    <option key={contact.id} value={contact.id}>{contact.contact_name}</option>
+                  ))}
+                </select>
+                <p className="text-sm text-gray-500 mt-2">Selecting a contact will save these recommendations for them.</p>
+              </div>
+            )}
             {currentQuestion.type === 'text' && (
               <input
                 type="text"
@@ -1204,27 +1216,39 @@ const SearchPage = ({ handleCategoryClick, onSeeMoreClick, onProductClick, onAdd
 };
 
 // Bookmarks Page Component
-const BookmarksPage = ({ bookmarkedProducts, soundSettings, clickSoundRef }) => {
+const BookmarksPage = ({ bookmarkedProducts, onRemoveFromWishlist, onProductClick, onHintClick, soundSettings, clickSoundRef }) => {
   return (
-    <div className="flex-grow w-full py-4 pt-[130px]"> {/* Adjusted padding top for fixed header and nav bar */}
-      {/* Banner Image Placeholder - Full width */}
-      {/* Changed to h-0 pb-[33.33%] for responsive aspect ratio, object-contain for image */}
+    <div className="flex-grow w-full py-4 pt-[130px]">
       <section className="w-full h-0 pb-[33.33%] mb-8 rounded-lg shadow-lg border-2 border-[var(--border-color)] relative flex items-center justify-center">
         <img
-          src="https://placehold.co/1200x400/D3A173/FFFFFF?text=My+Wyshlist+Banner" // Updated placeholder image
+          src="https://placehold.co/1200x400/D3A173/FFFFFF?text=My+Wyshlist+Banner"
           alt="My Wishlist Banner"
           className="absolute inset-0 w-full h-full object-contain rounded-lg"
           onError={(e) => e.target.src = "https://placehold.co/1200x400/D3A173/FFFFFF?text=Image+Load+Error"}
         />
-        {/* Removed text overlay */}
       </section>
 
-      {/* Bookmarked Products Grid */}
-      <div className="w-full mx-auto px-4 md:px-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">{/* Adjusted padding */}
+      <div className="w-full mx-auto px-4 md:px-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {bookmarkedProducts.length > 0 ? (
           bookmarkedProducts.map((product) => (
-            <div key={product.id} className="bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-3 flex flex-col items-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95">
-  {/* Aspect-ratio container */}
+            <div
+              key={product.id}
+              className="relative bg-[var(--box-bg-color)] rounded-lg shadow-md border-2 border-[var(--border-color)] p-3 flex flex-col items-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 cursor-pointer group"
+              onClick={() => onProductClick(product)} // Make the whole card clickable
+            >
+              {/* Remove Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  onRemoveFromWishlist(product.id);
+                  playSound(clickSoundRef, 'click', soundSettings);
+                }}
+                className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Remove from wishlist"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+
               <div className="relative w-full h-0 pb-[150%] bg-gray-200 rounded-md overflow-hidden mb-3">
                 <img
                   src={product.image_url}
@@ -1235,18 +1259,23 @@ const BookmarksPage = ({ bookmarkedProducts, soundSettings, clickSoundRef }) => 
               </div>
               <h3 className="text-base font-semibold text-[var(--primary-color)] mb-1 text-center h-12 line-clamp-2">{product.name}</h3>
               <p className="text-md text-gray-700 mb-2">${product.price}</p>
-              
-              {/* Container for the two buttons */}
+
               <div className="flex items-center justify-center space-x-2 mt-auto w-full">
-                <button 
-                  onClick={() => playSound(clickSoundRef, 'click', soundSettings)} 
-                  className="flex-1 px-4 py-2 text-sm bg-purple-500 text-white font-bold rounded-md shadow-md hover:bg-purple-600 transition-all duration-200 ease-in-out">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click
+                    onHintClick(product);
+                    playSound(clickSoundRef, 'click', soundSettings);
+                  }}
+                  className="flex-1 px-4 py-2 text-sm bg-gray-500 text-white font-bold rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out"
+                >
                   Hint
                 </button>
                 <a
                   href={product.amazon_link}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()} // Prevent card click
                   className="flex-1 px-4 py-2 text-sm bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out text-center"
                 >
                   Go Buy
@@ -2756,175 +2785,136 @@ const ProductDetailPage = ({ product, onProductClick, onAddProductToWishlist, on
   );
 };
 
-// New Recommended Page Component
 const RecommendedPage = ({ user, hasTakenQuiz, onQuizMeClick, onSignInClick, onProductClick, onAddProductToWishlist, soundSettings, clickSoundRef }) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [generalRecommendedProducts, setGeneralRecommendedProducts] = useState([]);
-  const [contactSpecificIdeas, setContactSpecificIdeas] = useState([]); // Stores ideas grouped by contact
+  const [recommendations, setRecommendations] = useState({});
+  const [recommendedProducts, setRecommendedProducts] = useState({});
 
-  // --- SUPABASE INTEGRATION: Fetch recommended products and contact-specific ideas ---
   useEffect(() => {
-    const fetchRecommendedData = async () => {
+    const fetchRecommendations = async () => {
       if (!user.isLoggedIn || !user.id) {
-        setGeneralRecommendedProducts([]);
-        setContactSpecificIdeas([]);
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
-
-      // Fetch general recommendations (if quiz taken)
-      if (hasTakenQuiz) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('quiz_answers')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError || !profile || !profile.quiz_answers) {
-          console.error('Error fetching quiz answers for general recommendations:', profileError);
-        } else {
-          // In a real scenario, you would use quizAnswers to filter/order products more intelligently.
-          // For this demo, we'll just fetch some random products or top-rated ones.
-          const { data, error } = await supabase
-            .from('products')
-            .select('*')
-            .limit(10) // Fetch a limited number of products
-            .order('rating', { ascending: false }); // Example: order by rating
-
-          if (error) {
-            console.error('Error fetching general recommended products:', error);
-          } else {
-            setGeneralRecommendedProducts(data);
-          }
-        }
-      }
-
-      // Fetch contact-specific gift ideas
-      const { data: giftIdeasData, error: giftIdeasError } = await supabase
+      // First, get the text-based ideas from the quiz results
+      const { data, error } = await supabase
         .from('contact_gift_ideas')
-        .select(`
-          *,
-          gifting_contacts (contact_name)
-        `)
+        .select('*, gifting_contacts ( contact_name )')
         .eq('user_id', user.id)
-        .not('contact_id', 'is', null) // Only fetch ideas associated with a contact
         .order('created_at', { ascending: false });
 
-      if (giftIdeasError) {
-        console.error('Error fetching contact-specific gift ideas:', giftIdeasError);
-      } else {
-        // Group ideas by contact
-        const groupedIdeas = giftIdeasData.reduce((acc, idea) => {
-          const contactName = idea.gifting_contacts?.contact_name || 'Unknown Contact';
-          if (!acc[contactName]) {
-            acc[contactName] = [];
-          }
-          acc[contactName].push(idea);
-          return acc;
-        }, {});
-        setContactSpecificIdeas(groupedIdeas);
+      if (error) {
+        console.error("Error fetching recommendations:", error);
+        setRecommendations({});
+        setIsLoading(false);
+        return;
       }
 
+      const grouped = data.reduce((acc, idea) => {
+        const contactName = idea.gifting_contacts?.contact_name || 'For You (General)';
+        if (!acc[contactName]) {
+          acc[contactName] = idea.generated_ideas_text;
+        }
+        return acc;
+      }, {});
+      setRecommendations(grouped);
+
+      // ** NEW LOGIC STARTS HERE **
+      // Now, fetch products based on the CATEGORIES from the ideas
+      const productPromises = Object.entries(grouped).map(async ([contactName, ideasText]) => {
+        let ideas = [];
+        try {
+          const jsonStartIndex = ideasText.indexOf('[');
+          const jsonEndIndex = ideasText.lastIndexOf(']');
+          if (jsonStartIndex === -1 || jsonEndIndex === -1) throw new Error("No JSON array found.");
+          const jsonString = ideasText.substring(jsonStartIndex, jsonEndIndex + 1);
+          ideas = JSON.parse(jsonString);
+        } catch (e) {
+          return [contactName, []]; // Return empty if JSON is invalid
+        }
+
+        // Collect all unique categories from the AI's suggestions
+        const categoriesToSearch = [...new Set(ideas.flatMap(idea => idea.categories || []))];
+
+        if (categoriesToSearch.length === 0) {
+          return [contactName, []]; // No categories to search for
+        }
+
+        // Fetch products that belong to any of the suggested categories
+        const { data: products, error: productError } = await supabase
+          .from('products')
+          .select('*')
+          .in('category', categoriesToSearch) // Use .in() to match multiple categories
+          .limit(10);
+
+        if (productError) {
+          console.error(`Error fetching products for ${contactName}:`, productError);
+          return [contactName, []];
+        }
+        return [contactName, products || []];
+      });
+
+      const productResults = await Promise.all(productPromises);
+      setRecommendedProducts(Object.fromEntries(productResults));
       setIsLoading(false);
     };
 
-    fetchRecommendedData();
-  }, [user.isLoggedIn, hasTakenQuiz, user.id]); // Re-fetch when these dependencies change
+    fetchRecommendations();
+  }, [user.id, user.isLoggedIn]);
 
-  const handleTakeQuizPrompt = () => {
-    playSound(clickSoundRef, 'click', soundSettings); // Play click sound
-    // This will trigger the Quiz Modal from the App component
-    onQuizMeClick();
-  };
-
-  return (
-    <div className="flex-grow w-full py-4 pt-[130px]">
-      {/* Changed to h-0 pb-[33.33%] for responsive aspect ratio, object-contain for image */}
-      <section className="w-full h-0 pb-[33.33%] mb-8 rounded-lg shadow-lg border-2 border-[var(--border-color)] relative flex items-center justify-center">
-        <img
-          src="https://placehold.co/1200x400/D3A173/FFFFFF?text=Recommended+Banner" // Updated placeholder image
-          alt="Recommended for You Banner"
-          className="absolute inset-0 w-full h-full object-contain rounded-lg"
-          onError={(e) => e.target.src = "https://placehold.co/1200x400/D3A173/FFFFFF?text=Image+Load+Error"}
-        />
-        {/* Removed text overlay */}
-      </section>
-      <div className="w-full mx-auto px-4 md:px-12">
-        {!user.isLoggedIn ? (
-          <div className="text-center text-xl text-[var(--primary-color)] py-12 bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)]">
-            <p className="mb-4">Please sign in to get personalized recommendations.</p>
-            <button
-              onClick={() => { onSignInClick(); playSound(clickSoundRef, 'click', soundSettings); }}
-              className="px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-            >
-              Sign In
-            </button>
-          </div>
-        ) : !hasTakenQuiz && Object.keys(contactSpecificIdeas).length === 0 ? (
-          <div className="text-center text-xl text-[var(--primary-color)] py-12 bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)]">
-            <p className="mb-4">Recommendations are provided through quiz answers.</p>
-            <button
-              onClick={handleTakeQuizPrompt}
-              className="px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-            >
-              Want to take your quiz now? ✨
-            </button>
-          </div>
-        ) : isLoading ? (
-          <div className="text-center text-xl text-[var(--primary-color)]">Loading recommendations...</div>
-        ) : (
-          <>
-            {/* General Recommendations (if quiz taken) */}
-            {hasTakenQuiz && generalRecommendedProducts.length > 0 && (
+  const renderContent = () => {
+    if (isLoading) {
+      return <div className="text-center text-xl text-[var(--primary-color)]">Loading recommendations...</div>;
+    }
+    if (!user.isLoggedIn) {
+      return (
+        <div className="text-center text-xl text-[var(--primary-color)] bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)] m-8 p-12">
+          <p className="mb-4">Please sign in to see your recommendations.</p>
+          <button onClick={() => onSignInClick()} className="px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90">Sign In</button>
+        </div>
+      );
+    }
+    if (Object.keys(recommendations).length === 0) {
+      return (
+        <div className="text-center text-xl text-[var(--primary-color)] bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)] m-8 p-12">
+          <p className="mb-4">Take a quiz to get personalized gift recommendations!</p>
+          <button onClick={() => onQuizMeClick()} className="px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90">Take Quiz ✨</button>
+        </div>
+      );
+    }
+    return (
+      <div className="w-full mx-auto px-4 md:px-12 space-y-12">
+        {Object.entries(recommendations).map(([contactName, ideasText]) => {
+          const productsForCarousel = recommendedProducts[contactName] || [];
+          return (
+            <div key={contactName}>
               <ProductSection
-                title="General Recommendations"
-                products={generalRecommendedProducts}
+                title={`Product Suggestions for ${contactName}`}
+                products={productsForCarousel}
                 onProductClick={onProductClick}
                 onAddProductToWishlist={onAddProductToWishlist}
                 soundSettings={soundSettings}
                 clickSoundRef={clickSoundRef}
                 showSeeMore={false}
               />
-            )}
-
-            {/* Contact-Specific Gift Ideas */}
-            {Object.keys(contactSpecificIdeas).length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-3xl font-bold text-[var(--primary-color)] mb-6 text-center">Gift Ideas for Your Contacts</h2>
-                {Object.entries(contactSpecificIdeas).map(([contactName, ideas], index) => (
-                  <div key={index} className="mb-12 bg-[var(--box-bg-color)] p-6 rounded-lg shadow-md border-2 border-[var(--border-color)]">
-                    <h3 className="text-2xl font-semibold text-[var(--primary-color)] mb-4">For {contactName}</h3>
-                    <div className="prose prose-sm max-w-none text-[var(--primary-color)]">
-                      <p className="whitespace-pre-wrap">{ideas[0].generated_ideas_text}</p> {/* Displaying only the first idea's text for now */}
-                    </div>
-                    {/* You could optionally fetch/display products related to these ideas here */}
-                    {/* For now, just showing the text generated by LLM */}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!hasTakenQuiz && Object.keys(contactSpecificIdeas).length === 0 && (
-              <div className="text-center text-xl text-[var(--primary-color)] py-12 bg-[var(--box-bg-color)] rounded-lg shadow-lg border-2 border-[var(--border-color)]">
-                <p className="mb-4">No recommendations found yet. Take the quiz or add gift ideas for your contacts to see them here!</p>
-                <button
-                  onClick={handleTakeQuizPrompt}
-                  className="px-6 py-3 bg-[var(--button-bg-color)] text-white font-bold rounded-md shadow-md hover:bg-opacity-90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-                >
-                  Take Quiz ✨
-                </button>
-              </div>
-            )}
-          </>
-        )}
+            </div>
+          );
+        })}
       </div>
+    );
+  };
+
+  return (
+    <div className="flex-grow w-full py-4 pt-[130px]">
+      <section className="w-full h-0 pb-[33.33%] mb-8 rounded-lg shadow-lg border-2 border-[var(--border-color)] relative flex items-center justify-center">
+        <img src="https://placehold.co/1200x400/D3A173/FFFFFF?text=Recommended+For+You" alt="Recommended Banner" className="absolute inset-0 w-full h-full object-contain rounded-lg" />
+      </section>
+      {renderContent()}
     </div>
   );
 };
-
-
 // New Cover Page Component
 const CoverPage = ({ onGuestSignIn, onSignInClick, onTermsAndConditionsClick, isDarkMode, onSocialSignIn, isTransitioningOut, showApiKeyError, onCreateAccountClick, soundSettings, clickSoundRef }) => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -3275,7 +3265,56 @@ const SplashPage = ({ onGetStartedClick, soundSettings, clickSoundRef }) => {
     </div>
   );
 };
+// New Notification Component
+const Notification = ({ message, isVisible, onClose }) => {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 5000); // Notification disappears after 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onClose]);
 
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed top-24 right-4 z-50 bg-[var(--box-bg-color)] p-4 rounded-lg shadow-lg border-2 border-[var(--border-color)] animate-fade-in-out w-full max-w-sm">
+      <div className="flex items-start">
+        <div className="flex-shrink-0">
+          <i className="fas fa-check-circle text-green-500 text-xl"></i>
+        </div>
+        <div className="ml-3 w-0 flex-1 pt-0.5">
+          <p className="text-sm font-medium text-[var(--primary-color)]">
+            Success!
+          </p>
+          <p className="mt-1 text-sm text-[var(--primary-color)]">
+            {message}
+          </p>
+          <div className="mt-3 flex">
+             <button
+              onClick={onClose}
+              className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 w-full"
+            >
+              Close to continue browsing
+            </button>
+          </div>
+        </div>
+      </div>
+       <style>{`
+        @keyframes fadeInOut {
+          0% { opacity: 0; transform: translateX(100%); }
+          10% { opacity: 1; transform: translateX(0); }
+          90% { opacity: 1; transform: translateX(0); }
+          100% { opacity: 0; transform: translateX(100%); }
+        }
+        .animate-fade-in-out {
+          animation: fadeInOut 5s forwards;
+        }
+      `}</style>
+    </div>
+  );
+};
 // Main App component
 const App = () => {
   console.log("App component is rendering."); // Added for debugging
@@ -3300,6 +3339,7 @@ const App = () => {
   const [showHintModal, setShowHintModal] = useState(false);
   const [giftingContacts, setGiftingContacts] = useState([]);
   const [selectedBudget, setSelectedBudget] = useState('All'); // New state for budget filter
+  const [notification, setNotification] = useState({ isVisible: false, message: '' });
 
   const clickSoundRef = useRef(null);
   const scrollSoundRef = useRef(null);
@@ -3645,6 +3685,30 @@ const App = () => {
       alert('An unexpected error occurred.');
     }
   };
+  // Add this new function
+  const handleRemoveFromWishlist = async (productId) => {
+    if (!user.isLoggedIn || !user.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('wishlists')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('product_id', productId);
+
+      if (error) {
+        console.error('Error removing from wishlist:', error);
+        alert('Failed to remove from wishlist: ' + error.message);
+      } else {
+        // Update local state immediately for a responsive UI
+        setBookmarkedProducts(prev => prev.filter(item => item.id !== productId));
+        alert('Product removed from your wishlist!');
+      }
+    } catch (error) {
+      console.error('Unexpected error removing from wishlist:', error);
+      alert('An unexpected error occurred.');
+    }
+  };
 
   // Handler for opening the Hint modal
   const handleHintClick = (product) => {
@@ -3654,6 +3718,10 @@ const App = () => {
     }
     setSelectedProduct(product); // Ensure the product is set for the modal
     setShowHintModal(true);
+  };
+  // Add this function
+  const handleShowNotification = (message) => {
+    setNotification({ isVisible: true, message });
   };
 
 
@@ -3894,11 +3962,14 @@ const App = () => {
     }
   };
 
-  const handleQuizComplete = (answers) => {
-    setHasTakenQuiz(true); // This will be updated by the profile fetch if logged in
+  const handleQuizComplete = (contactName) => {
+    setHasTakenQuiz(true);
     setShowQuizModal(false); // Close the quiz modal
-    console.log("Quiz completed with answers:", answers);
-    // The quiz answers are saved to Supabase profile directly in QuizModal
+    // Show the new notification
+    const message = contactName
+      ? `Recommendations for ${contactName} have been updated!`
+      : "Your general recommendations are ready!";
+    handleShowNotification(message);
   };
 
   // Handle account creation from CreateAccountPage (email/password signup)
@@ -3919,6 +3990,11 @@ const App = () => {
   return (
     <div className={`min-h-screen font-inter flex flex-col items-center transition-colors duration-300`}
          style={{ backgroundColor: `var(--main-bg-color)`, color: `var(--text-color)` }}>
+      <Notification
+        isVisible={notification.isVisible}
+        message={notification.message}
+        onClose={() => setNotification({ isVisible: false, message: '' })}
+      />
       {/* Font Awesome for icons */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 
@@ -4070,7 +4146,14 @@ const App = () => {
             />
           )}
           {currentPage === 'bookmarks' && (
-            <BookmarksPage bookmarkedProducts={bookmarkedProducts} soundSettings={soundSettings} clickSoundRef={clickSoundRef} />
+            <BookmarksPage
+              bookmarkedProducts={bookmarkedProducts}
+              onRemoveFromWishlist={handleRemoveFromWishlist}
+              onProductClick={handleProductClick}
+              onHintClick={handleHintClick}
+              soundSettings={soundSettings}
+              clickSoundRef={clickSoundRef}
+            />
           )}
           {currentPage === 'settings' && (
             <SettingsPage
